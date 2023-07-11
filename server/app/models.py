@@ -25,9 +25,9 @@ class Subscriber(models.Model):
     telegram_user = models.OneToOneField(TelegramUser, verbose_name="Пользователь",
                                          on_delete=models.CASCADE, related_name="subscriber")
     gender = models.CharField(choices=GENDERS, verbose_name="Гендер", default="helicopter", max_length=10)
-    age = models.SmallIntegerField(verbose_name="Возраст")
-    height = models.FloatField(verbose_name="Рост")
-    weight = models.FloatField(verbose_name="Вес")
+    age = models.PositiveSmallIntegerField(verbose_name="Возраст")
+    height = models.FloatField(verbose_name="Рост", validators=[MinValueValidator(1)])
+    weight = models.FloatField(verbose_name="Вес", validators=[MinValueValidator(1)])
 
     class Meta:
         verbose_name = 'Подписчик'
@@ -62,7 +62,8 @@ class TrainingProgram(models.Model):
 class Training(models.Model):
     name = models.CharField(verbose_name="Название", max_length=64)
     description = models.CharField(verbose_name="Описание", max_length=256)
-    difficulty = models.FloatField(verbose_name="Сложность", validators=[MinValueValidator(1), MaxValueValidator(5)])
+    difficulty = models.FloatField(verbose_name="Сложность", 
+                                   validators=[MinValueValidator(1), MaxValueValidator(5)])
 
 
     @property
@@ -91,10 +92,13 @@ class Exercise(models.Model):
 
 class Approach(models.Model):
     time = models.TimeField(verbose_name="Время выполнения")
-    repetition_count = models.SmallIntegerField(verbose_name="Кол-во повторений", validators=[MinValueValidator(1)])
+    repetition_count = models.SmallIntegerField(verbose_name="Кол-во повторений",
+                                                 validators=[MinValueValidator(1)])
     rest = models.TimeField(verbose_name="Время отдыха")
-    exercise = models.ForeignKey(Exercise, verbose_name="Упражнение", related_name="approach", on_delete=models.CASCADE)
-    training = models.ForeignKey(Training, verbose_name="Тренировка", related_name="approach", on_delete=models.CASCADE, null=True)
+    exercise = models.ForeignKey(Exercise, verbose_name="Упражнение",
+                                  related_name="approach", on_delete=models.CASCADE)
+    training = models.ForeignKey(Training, verbose_name="Тренировка",
+                                  related_name="approach", on_delete=models.CASCADE, null=True)
 
     class Meta:
         verbose_name = 'Подход'
