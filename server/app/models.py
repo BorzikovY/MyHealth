@@ -41,6 +41,8 @@ class TrainingProgram(models.Model):
     weeks = models.SmallIntegerField(verbose_name="Кол-во недель", validators=[MinValueValidator(1)])
     trainings = models.ManyToManyField("Training", verbose_name="Тренировки",
                                        related_query_name="training_programs")
+    sport_nutrition = models.ForeignKey("SportNutrition", verbose_name="Спортивные добавки",
+                                         related_name="training_program", on_delete=models.CASCADE, null=True)
 
     @property
     def avg_training_time(self) -> time:
@@ -61,7 +63,7 @@ class TrainingProgram(models.Model):
 
 class Training(models.Model):
     name = models.CharField(verbose_name="Название", max_length=64)
-    description = models.CharField(verbose_name="Описание", max_length=256)
+    description = models.TextField(verbose_name="Описание")
     difficulty = models.FloatField(verbose_name="Сложность", 
                                    validators=[MinValueValidator(1), MaxValueValidator(5)])
 
@@ -103,3 +105,28 @@ class Approach(models.Model):
     class Meta:
         verbose_name = 'Подход'
         verbose_name_plural = 'Подходы'
+
+
+class SportNutrition(models.Model):
+    name = models.CharField(verbose_name="Название", max_length=32)
+    description = models.TextField(verbose_name="Описание")
+    dosages = models.CharField(verbose_name="Дозировки", max_length=100)
+    use = models.CharField(verbose_name="Способ применения", max_length=100)
+    contraindications = models.CharField(verbose_name="Противопоказания", max_length=100)
+
+    class Meta:
+        verbose_name = 'Спортивная добавка'
+        verbose_name_plural = 'Спортивные добавки'
+
+
+class Portion(models.Model):
+    name = models.CharField(verbose_name="Название", max_length=32)
+    description = models.TextField(verbose_name="Описание")
+    calories = models.PositiveSmallIntegerField(verbose_name="Калории")
+    proteins = models.FloatField(verbose_name="Белки", validators=[MinValueValidator(0)])
+    fats = models.FloatField(verbose_name="Жиры", validators=[MinValueValidator(0)])
+    carbs = models.FloatField(verbose_name="Углеводы", validators=[MinValueValidator(0)])
+
+    class Meta:
+        # определиться с названием таблицы на русском
+        pass
