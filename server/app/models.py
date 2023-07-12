@@ -1,15 +1,35 @@
+import hashlib
 from datetime import time
 
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
+from server.app.managers import TelegramUserManager
+
 
 class TelegramUser(AbstractUser):
-    telegram_id = models.IntegerField(verbose_name="Telegram id", unique=True, null=True)
-    first_name = models.CharField(verbose_name="Имя", max_length=32, null=True)
-    last_name = models.CharField(verbose_name="Фамилия", max_length=64, null=True)
+    username, password = None, None
+    USERNAME_FIELD = "telegram_id"
+
+    objects = TelegramUserManager()
+
+    telegram_id = models.CharField(verbose_name="Telegram id", unique=True, max_length=32)
+    chat_id = models.CharField(verbose_name="Chat id", unique=True, max_length=64)
+    first_name = models.CharField(verbose_name="Имя", max_length=32, null=True, blank=True)
+    last_name = models.CharField(verbose_name="Фамилия", max_length=64, null=True, blank=True)
     balance = models.FloatField(verbose_name="Баланс", default=0., blank=True, null=True)
+
+    @classmethod
+    def encode_chat_id(cls, string: str) -> str:
+        hash_string = hashlib.sha512(string.encode("utf-8"))
+        return hash_string.hexdigest()
+
+    def set_chat_id(self, string: str):
+        self.chat_id = self.encode_chat_id(string)
+
+    def check_chat_id(self, string: str) -> bool:
+        return self.encode_chat_id(string) == self.chat_id
 
     class Meta:
         verbose_name = 'Пользователь'
