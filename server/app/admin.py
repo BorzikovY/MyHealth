@@ -1,12 +1,14 @@
 from django.contrib import admin
+
 from app.models import (TelegramUser, Subscriber,
                         TrainingProgram, Training, Exercise, Approach)
 from app.forms import TelegramUserChangeForm, TelegramUserCreationForm
 
-admin.site.register(Subscriber)
-admin.site.register(Exercise)
-admin.site.register(Approach)
-admin.site.register(TrainingProgram)
+
+admin.register(Subscriber)
+admin.register(Exercise)
+admin.register(Approach)
+admin.register(TrainingProgram)
 
 
 @admin.register(Training)
@@ -21,7 +23,6 @@ class TrainingAdmin(admin.ModelAdmin):
 
 @admin.register(TelegramUser)
 class TelegramUserAdmin(admin.ModelAdmin):
-    fields = ['telegram_id', ('first_name', 'last_name'), 'balance']
     add_form = TelegramUserCreationForm
     form = TelegramUserChangeForm
     model = TelegramUser

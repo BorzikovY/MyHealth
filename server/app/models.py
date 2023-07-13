@@ -5,12 +5,14 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
-from server.app.managers import TelegramUserManager
+from app.managers import TelegramUserManager
 
 
 class TelegramUser(AbstractUser):
-    username, password = None, None
+    username, password, email = None, None, None
     USERNAME_FIELD = "telegram_id"
+
+    REQUIRED_FIELDS = ["chat_id",]
 
     objects = TelegramUserManager()
 

@@ -1,7 +1,5 @@
 from django.contrib.auth.base_user import BaseUserManager
 
-from app.models import TelegramUser
-
 
 class TelegramUserManager(BaseUserManager):
 
@@ -9,8 +7,9 @@ class TelegramUserManager(BaseUserManager):
 
         if not (telegram_id and chat_id):
             raise ValueError("You must specify both telegram_id and chat_id to proceed")
-        telegram_user: TelegramUser = self.model(telegram_id=telegram_id, **extra_fields)
+        telegram_user = self.model(telegram_id=telegram_id, **extra_fields)
         telegram_user.set_chat_id(chat_id)
+        telegram_user.save()
 
         return telegram_user
 
