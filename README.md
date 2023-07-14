@@ -32,15 +32,23 @@
 
 ***
 
-###  Настройка Pylint
+###  Настройка линтеров
 
 ***
 
 **Linux**
 
 > sudo apt-get install pylint
+> 
+> `python -m pip install black`
+> 
+> `python -m pip install flake8`
+> 
+> export DJANGO_SETTING_MODULE=server.settings
 
-*Примечание*: **запуск совершается командой `pylint server`**
+1. Для запуска pylint: `pylint ./app`
+2. Для запуска black: `black ./app`
+3. Для запуска flake8: `flake8 ./app`
 
 **Windows**
 
