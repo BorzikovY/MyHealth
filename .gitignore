@@ -6,3 +6,4 @@
 /server/app/__pycache__/*
 /server/app/migrations/*
 /server/media/*
+/server/logs/*
