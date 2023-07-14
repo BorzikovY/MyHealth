@@ -109,6 +109,43 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTHENTICATION_BACKENDS = ("app.auth.TelegramAuthBackend",)
 
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'console': {
+            'format': '%(levelname)-8s [%(asctime)s] **%(name)-12s** message: %(message)s'
+        },
+        'file': {
+            'format': '%(levelname)-8s [%(asctime)s] **%(name)-12s** message: %(message)s'
+        }
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'console'
+        },
+        'file': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'formatter': 'file',
+            'filename': BASE_DIR / "logs/warning.log"
+        }
+    },
+    'loggers': {
+        '': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'file'],
+            'propagate': True
+        },
+        'django.request': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'file']
+        }
+    }
+}
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
