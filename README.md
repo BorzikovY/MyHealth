@@ -32,7 +32,7 @@
 
 ***
 
-###  Настройка линтеров
+### 2. Настройка линтеров
 
 ***
 
@@ -54,3 +54,30 @@
 
 *Не обслуживается*
 
+***
+
+### 3. Настройка Docker 😈
+
+***
+
+**Linux**
+
+> sudo apt install curl software-properties-common ca-certificates apt-transport-https -y
+> 
+> curl -f -s -S -L https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+> 
+> sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable"
+> 
+> sudo apt-get install docker-ce -y
+> 
+> sudo apt-get install docker-compose
+
+*Примечание*: **Удачи)**
+
+1. `docker-compose build`
+2. `docker-composr up -d`
+3. `docker exex -ti myhealth_server_1 /bin/bash`
+4. `python manage.py migrate`
+5. `python manage.py createsuperuser`
+
+🥳

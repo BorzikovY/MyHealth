@@ -1,6 +1,7 @@
 /.idea
 /venv/*
-/server/.env
+/server/.env.prod
+/server/.env.dev
 /server/db.sqlite3
 /server/server/__pycache__/*
 /server/app/__pycache__/*
