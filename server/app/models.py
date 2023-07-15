@@ -121,6 +121,14 @@ class Subscriber(models.Model):
     weight = models.FloatField(
         verbose_name="Вес", validators=[MinValueValidator(20), MaxValueValidator(200)]
     )
+    training_program = models.ForeignKey("TrainingProgram",
+                                         verbose_name="Тренировочная программа",
+                                         on_delete=models.SET_NULL,
+                                         related_name="subscribers",
+                                         related_query_name="subscriber_set",
+                                         null=True,
+                                         blank=True
+                                         )
 
     def __str__(self):
         return str(self.telegram_user)
@@ -154,12 +162,15 @@ class TrainingProgram(models.Model):
         verbose_name="Кол-во недель", validators=[MinValueValidator(1)]
     )
     trainings = models.ManyToManyField(
-        "Training", verbose_name="Тренировки", related_query_name="training_programs"
+        "Training", verbose_name="Тренировки",
+        related_query_name="training_programs_set",
+        related_name="training_programs"
     )
     sport_nutrition = models.ForeignKey(
         "SportNutrition",
         verbose_name="Спортивные добавки",
-        related_name="training_program",
+        related_name="training_programs",
+        related_query_name="training_program_set",
         on_delete=models.CASCADE,
         null=True,
     )
@@ -174,10 +185,10 @@ class TrainingProgram(models.Model):
         @return: timedelta
         """
         trainings = Training.objects.filter(  # pylint: disable=no-member
-            training_programs__id=self.id  # pylint: disable=no-member
+            training_programs_set=self
         )
         output = trainings.aggregate(
-            time=Sum(F("approach__time") + F("approach__rest"))
+            time=Sum(F("approach_set__time") + F("approach_set__rest"))
         )
         return output.get("time") / len(trainings)
 
@@ -188,7 +199,7 @@ class TrainingProgram(models.Model):
         @return: int
         """
         count = Training.objects.filter(  # pylint: disable=no-member
-            training_programs__id=self.id  # pylint: disable=no-member
+            training_programs_set=self
         ).count()
         return count
 
@@ -199,7 +210,7 @@ class TrainingProgram(models.Model):
         @return: float
         """
         queryset = Training.objects.filter(  # pylint: disable=no-member
-            training_programs__id=self.id  # pylint: disable=no-member
+            training_programs_set=self
         ).aggregate(Avg("difficulty"))
         return queryset.get("difficulty__avg")
 
@@ -293,14 +304,16 @@ class Approach(models.Model):
     training = models.ForeignKey(
         Training,
         verbose_name="Тренировка",
-        related_name="approach",
+        related_name="approaches",
+        related_query_name="approach_set",
         on_delete=models.CASCADE,
         null=True,
     )
     exercise = models.ForeignKey(
         Exercise,
         verbose_name="Упражнение",
-        related_name="approach",
+        related_name="approaches",
+        related_query_name="approach_set",
         on_delete=models.CASCADE,
     )
 
@@ -356,6 +369,11 @@ class Portion(models.Model):
     carbs = models.FloatField(
         verbose_name="Углеводы", validators=[MinValueValidator(0)]
     )
+    sport_nutrition = models.ForeignKey(SportNutrition,
+                                        verbose_name="Спортивное питание",
+                                        on_delete=models.CASCADE,
+                                        related_name="portions",
+                                        related_query_name="portion_set")
 
     def __str__(self):
         return f"{self.name}"

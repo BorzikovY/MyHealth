@@ -23,7 +23,7 @@ class TelegramAuthBackend(ModelBackend):
         except TelegramUser.DoesNotExist as error:  # pylint: disable=no-member
             raise ValidationError(
                 f"Telegram user with {telegram_id} id not found"
-            ) from error
+            )
 
     def get_user(self, user_id):
         try:

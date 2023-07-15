@@ -1,7 +1,9 @@
 """Import modules that work with forms"""
+import logging
+
 from django import forms
 from django.contrib.auth import authenticate
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm, AuthenticationForm
 
 from app.models import TelegramUser
 
@@ -52,13 +54,15 @@ class TelegramUserLoginForm(forms.Form):
     """
 
     def __init__(self, *args, request=None, **kwargs):
-        self.telegram_user, self.request = None, request
-        super().__init__(self, *args, request, **kwargs)
+        self.telegram_user = None
+        self.request = request
+        super(TelegramUserLoginForm, self).__init__(*args, **kwargs)
+        self.fields["password"].label = "Chat id"
+        self.fields["username"].label = "Telegram id"
 
     def clean(self):
-        telegram_id = self.cleaned_data.get("telegram_id")
-        chat_id = self.cleaned_data.get("chat_id")
-
+        telegram_id = self.cleaned_data.get("username")
+        chat_id = self.cleaned_data.get("password")
         if telegram_id is not None and chat_id:
             self.telegram_user = authenticate(
                 self.request, telegram_id=telegram_id, chat_id=chat_id
@@ -71,17 +75,20 @@ class TelegramUserLoginForm(forms.Form):
         """
         return self.telegram_user
 
-    telegram_id = forms.CharField(
+    username = forms.CharField(
         widget=forms.TextInput(
-            attrs={"class": "form-control", "placeholder": "", "id": "telegram_id"}
+            attrs={
+                "class": "form-control",
+                "placeholder": "",
+                "id": "telegram_id"}
         )
     )
-    chat_id = forms.CharField(
+    password = forms.CharField(
         widget=forms.PasswordInput(
             attrs={
                 "class": "form-control",
                 "placeholder": "",
-                "id": "chat_id",
+                "id": "chat_id"
             }
         )
     )

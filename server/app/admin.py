@@ -176,38 +176,10 @@ class ExerciseAdmin(admin.ModelAdmin):
     Exercise Admin panel
     """
 
-    list_display = ("name", "approach_time", "approach_rest")
+    list_display = ("name", "image", "video")
     inlines = [
         ApproachInline,
     ]
-
-    def approach_time(self, instance: Exercise) -> timedelta:
-        """
-
-        @param instance:
-        @return: duration of one approach
-        """
-        approach_time = Approach.objects.filter(  # pylint: disable=no-member
-            exercise_id=instance.id  # pylint: disable=no-member
-        ).values("time")
-
-        return approach_time[0]["time"] if approach_time else None
-
-    approach_time.short_description = "Время выполнения"
-
-    def approach_rest(self, instance: Exercise) -> timedelta:
-        """
-
-        @param instance:
-        @return: duration of rest
-        """
-        approach_rest = Approach.objects.filter(  # pylint: disable=no-member
-            exercise_id=instance.id  # pylint: disable=no-member
-        ).values("rest")
-
-        return approach_rest[0]["rest"] if approach_rest else None
-
-    approach_rest.short_description = "Время отдыха"
 
 
 @admin.register(SportNutrition)
@@ -225,4 +197,4 @@ class PortionAdmin(admin.ModelAdmin):
     Portion Admin panel
     """
 
-    list_display = ("name", "calories")
+    list_display = ("name", "calories", "proteins", "fats", "carbs")

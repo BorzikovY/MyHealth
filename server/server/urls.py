@@ -16,16 +16,20 @@ Including another URLconf
 """
 from django.contrib import admin
 
-from django.urls import path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
-from app.views import AdminAuth
+from app.forms import TelegramUserLoginForm
+
+
+admin.autodiscover()
+admin.site.login_form = TelegramUserLoginForm
 
 
 urlpatterns = [
-    path("admin/login/", AdminAuth.as_view()),
     path("admin/", admin.site.urls),
+    path("api/", include('app.urls'))
 ]
 
 if settings.DEBUG:

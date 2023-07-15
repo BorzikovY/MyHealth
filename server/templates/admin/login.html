@@ -42,15 +42,14 @@
 {% endblocktranslate %}
 </p>
 {% endif %}
-{{ form. }}
 <form method="post" id="login-form">{% csrf_token %}
   <div class="form-row" style="display: flex; flex-direction: column;">
-    {{ form.telegram_id.errors }}
-    {{ form.telegram_id.label_tag }} {{ form.telegram_id }}
+    {{ form.username.errors }}
+    {{ form.username.label_tag }} {{ form.username }}
   </div>
   <div class="form-row" style="display: flex; flex-direction: column;">
-    {{ form.chat_id.errors }}
-    {{ form.chat_id.label_tag }} {{ form.chat_id }}
+    {{ form.password.errors }}
+    {{ form.password.label_tag }} {{ form.password }}
     <input type="hidden" name="next" value="{{ next }}">
   </div>
   <div class="submit-row">
