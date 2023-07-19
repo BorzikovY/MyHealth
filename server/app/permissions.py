@@ -26,3 +26,8 @@ class GroupPermission(BasePermission, type):
         if not any(group in self.groups for group in user.groups.all()):
             return False
         return True
+
+
+class UnauthenticatedPost(BasePermission):
+    def has_permission(self, request, view):
+        return request.method in ['POST']

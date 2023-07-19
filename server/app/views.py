@@ -1,18 +1,14 @@
 """Import modules that work with views"""
-from django.shortcuts import get_object_or_404
 from rest_framework import views
-from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import IsAuthenticated
 
-from rest_framework.status import HTTP_401_UNAUTHORIZED, HTTP_400_BAD_REQUEST
-from rest_framework.filters import BaseFilterBackend
+from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST
 from rest_framework.response import Response
 
-from app.permissions import GroupPermission
+from app.permissions import GroupPermission, UnauthenticatedPost
 from app.serializers import UserSerializer, UserLoginSerializer
-from django_filters.rest_framework import DjangoFilterBackend
 
 
 class AuthToken(ObtainAuthToken):
@@ -28,9 +24,8 @@ class AuthToken(ObtainAuthToken):
 
 
 class UserApi(views.APIView):
-    permission_classes = (IsAuthenticated,)
-    authentication_classes = (TokenAuthentication,)
     serializer_class = UserSerializer
+    permission_classes = (IsAuthenticated | UnauthenticatedPost,)
 
     def get_serializer_context(self):
         return {
@@ -54,3 +49,14 @@ class UserApi(views.APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
+    def put(self, request):
+        user = self.serializer_class().update(
+            instance=request.user,
+            validated_data=request.data
+        )
+        serializer = self.serializer_class(user)
+        return Response(serializer.data)
+
+    def delete(self, request):
+        request.user.delete()
+        return Response(status=HTTP_204_NO_CONTENT)

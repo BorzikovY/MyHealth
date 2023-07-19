@@ -202,4 +202,5 @@ AUTH_USER_MODEL = "app.TelegramUser"
 AUTHENTICATION_FORM = 'app.forms.TelegramUserLoginForm'
 
 
-LOGIN_REDIRECT_URL = "/api/swagger-ui"
+LOGIN_URL = "/admin/login"
+LOGIN_REDIRECT_URL = "/api/swagger"
