@@ -2,6 +2,7 @@
 from datetime import timedelta
 
 from django.contrib import admin
+from django.contrib.auth.models import User
 
 from app.models import (
     TelegramUser,
@@ -27,10 +28,8 @@ class TelegramUserAdmin(admin.ModelAdmin):
     Telegram user Admin panel
     """
 
-    add_form = TelegramUserCreationForm
     form = TelegramUserChangeForm
     model = TelegramUser
-    readonly_fields = ("chat_id",)
     list_display = (
         "telegram_id",
         "first_name",
@@ -38,6 +37,13 @@ class TelegramUserAdmin(admin.ModelAdmin):
         "is_superuser",
         "is_staff",
     )
+
+    def get_readonly_fields(self, request, instance=None):
+        if instance is not None:
+            return ('chat_id',)
+        else:
+            return super(TelegramUserAdmin, self).get_readonly_fields(request, instance)
+
     fieldsets = (
         (None, {"fields": ("telegram_id", "chat_id", "first_name", "last_name")}),
         (

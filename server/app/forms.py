@@ -3,7 +3,7 @@ import logging
 
 from django import forms
 from django.contrib.auth import authenticate
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm, AuthenticationForm
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
 from app.models import TelegramUser
 
@@ -46,6 +46,23 @@ class TelegramUserChangeForm(
             "telegram_id",
             "chat_id",
         )
+
+    def save(self, commit=True):
+        telegram_user: TelegramUser = super(
+            TelegramUserChangeForm, self
+        ).save(commit=False)
+        telegram_id, chat_id = [
+            self.cleaned_data.get(key)
+            for key in ["telegram_id", "chat_id"]
+        ]
+
+        if not TelegramUser.objects.filter(
+                telegram_id=telegram_id
+        ).exists():
+            telegram_user.set_chat_id(chat_id)
+        telegram_user.save()
+
+        return telegram_user
 
 
 class TelegramUserLoginForm(forms.Form):

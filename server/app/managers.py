@@ -15,7 +15,6 @@ class TelegramUserManager(BaseUserManager):
         @param extra_fields:
         @return: Telegram user
         """
-
         if not (telegram_id and chat_id):
             raise ValueError("You must specify both telegram_id and chat_id to proceed")
         telegram_user = self.model(telegram_id=telegram_id, **extra_fields)

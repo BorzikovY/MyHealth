@@ -2,6 +2,7 @@
 import os
 
 from django.conf import settings
+from rest_framework.authtoken.models import Token
 
 
 def remove_file(sender, instance, **kwargs) -> None:  # pylint: disable=unused-argument
@@ -22,3 +23,8 @@ def remove_file(sender, instance, **kwargs) -> None:  # pylint: disable=unused-a
             abs_file_path = os.path.join(settings.MEDIA_ROOT, rel_file_path)
             if os.path.exists(abs_file_path):
                 os.remove(abs_file_path)
+
+
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
