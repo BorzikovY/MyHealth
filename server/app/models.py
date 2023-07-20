@@ -113,13 +113,21 @@ class Subscriber(models.Model):
         verbose_name="Гендер",
         default="helicopter",
         max_length=gender_length(GENDERS),
+        null=True, blank=True
     )
-    age = models.PositiveSmallIntegerField(verbose_name="Возраст")
+    age = models.PositiveSmallIntegerField(
+        verbose_name="Возраст",
+        blank=True, null=True
+    )
     height = models.FloatField(
-        verbose_name="Рост", validators=[MinValueValidator(1), MaxValueValidator(3)]
+        verbose_name="Рост",
+        validators=[MinValueValidator(1), MaxValueValidator(3)],
+        blank=True, null=True
     )
     weight = models.FloatField(
-        verbose_name="Вес", validators=[MinValueValidator(20), MaxValueValidator(200)]
+        verbose_name="Вес",
+        validators=[MinValueValidator(20), MaxValueValidator(200)],
+        blank=True, null=True
     )
     training_program = models.ForeignKey("TrainingProgram",
                                          verbose_name="Тренировочная программа",
@@ -139,7 +147,9 @@ class Subscriber(models.Model):
         age is over 18 or not
         @return: bool
         """
-        return self.age >= 18
+        if isinstance(self.age, int):
+            return self.age >= 18
+        return None
 
     class Meta:  # pylint: disable=too-few-public-methods
         """

@@ -17,6 +17,8 @@ class TelegramUserManager(BaseUserManager):
         """
         if not (telegram_id and chat_id):
             raise ValueError("You must specify both telegram_id and chat_id to proceed")
+        elif self.model.object.filter(telegram_id=telegram_id):
+            raise ValueError(f"Telegram User with {telegram_id} id already exists")
         telegram_user = self.model(telegram_id=telegram_id, **extra_fields)
         telegram_user.set_chat_id(chat_id)
         telegram_user.save()

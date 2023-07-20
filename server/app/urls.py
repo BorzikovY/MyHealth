@@ -4,11 +4,12 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
 
-from app.views import UserApi, AuthToken
+from app.views import UserApi, SubscriberApi, AuthToken
 
 
 api_routes = [
-    path("user/", UserApi.as_view())
+    path("user/", UserApi.as_view()),
+    path("subscribe/", SubscriberApi.as_view())
 ]
 
 
