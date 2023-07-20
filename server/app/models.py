@@ -200,7 +200,8 @@ class TrainingProgram(models.Model):
         output = trainings.aggregate(
             time=Sum(F("approach_set__time") + F("approach_set__rest"))
         )
-        return output.get("time") / len(trainings)
+        if output.get("time", None) is not None:
+            return output.get("time") / len(trainings)
 
     @property
     def training_count(self) -> int:

@@ -31,3 +31,13 @@ class GroupPermission(BasePermission, type):
 class UnauthenticatedPost(BasePermission):
     def has_permission(self, request, view):
         return request.method in ['POST']
+
+
+class UnauthenticatedGet(BasePermission):
+    def has_permission(self, request, view):
+        return request.method in ['GET']
+
+
+class SubscribePermission(BasePermission):
+    def has_permission(self, request, view):
+        return hasattr(request.user, "subscriber")

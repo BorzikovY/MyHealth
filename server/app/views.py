@@ -11,8 +11,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST
 from rest_framework.response import Response
 
-from app.permissions import GroupPermission, UnauthenticatedPost
-from app.serializers import UserSerializer, UserLoginSerializer, SubscriberSerializer, UserUpdateSerializer
+from app.permissions import GroupPermission, UnauthenticatedPost, SubscribePermission, UnauthenticatedGet
+from app.serializers import UserSerializer, UserLoginSerializer, SubscriberSerializer, UserUpdateSerializer, \
+    ProgramSerializer
 
 
 class AuthToken(ObtainAuthToken):
@@ -54,32 +55,32 @@ class RestApi(type):
         kwargs['context'] = self.get_serializer_context()
         return self.serializer_class(*args, **kwargs)
 
-    def get(self, request):
-        serializer = self.get_serializer(context={"request": request})
+    def get(self, request, **kwargs):
+        serializer = self.get_serializer(**kwargs)
         return Response(serializer.data)
 
-    def post(self, request):
+    def post(self, request, **kwargs):
         serializer = self.get_serializer(
             data=request.data,
-            context={"request": request}
+            **kwargs
         )
         if serializer.is_valid(raise_exception=True):
             serializer.create(serializer.validated_data)
             return Response(serializer.data)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
-    def put(self, request):
+    def put(self, request, **kwargs):
         serializer = self.get_serializer(
             data=request.data,
-            context={"request": request}
+            **kwargs
         )
         if serializer.is_valid(raise_exception=True):
             serializer.update(serializer.instance, serializer.validated_data)
             return Response(serializer.data)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
-    def delete(self, request):
-        serializer = self.get_serializer(context={"request": request})
+    def delete(self, request, **kwargs):
+        serializer = self.get_serializer(**kwargs)
         serializer.delete()
         return Response(status=HTTP_204_NO_CONTENT)
 
@@ -101,5 +102,11 @@ class SubscriberApi(generics.GenericAPIView, metaclass=RestApi):
     __methods__ = ["get", "post", "put", "delete"]
     serializer_class = SubscriberSerializer
     permission_classes = (IsAuthenticated,)
+
+
+class ProgramApi(generics.GenericAPIView, metaclass=RestApi):
+    __methods__ = ["get", "post"]
+    serializer_class = ProgramSerializer
+    permission_classes = (SubscribePermission | UnauthenticatedGet,)
 
 
