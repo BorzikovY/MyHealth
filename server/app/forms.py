@@ -1,5 +1,5 @@
 """Import modules that work with forms"""
-import logging
+from typing import Dict
 
 from django import forms
 from django.contrib.auth import authenticate
@@ -13,13 +13,11 @@ class TelegramUserCreationForm(
 ):  # pylint: disable=too-many-ancestors;too-few-public-methods;
 
     """
-    Form for creating new Telegram user
+    Form for creating new Telegram users
     """
 
     class Meta:  # pylint: disable=too-few-public-methods
-        """
-        Meta data
-        """
+        """Meta class"""
 
         model = TelegramUser
         fields = (
@@ -33,13 +31,11 @@ class TelegramUserChangeForm(
 ):  # pylint: disable=too-many-ancestors;too-few-public-methods;
 
     """
-    Form for updating Telegram user
+    Form for updating Telegram users
     """
 
     class Meta:  # pylint: disable=too-few-public-methods
-        """
-        Meta data
-        """
+        """Meta class"""
 
         model = TelegramUser
         fields = (
@@ -47,18 +43,16 @@ class TelegramUserChangeForm(
             "chat_id",
         )
 
-    def save(self, commit=True):
-        telegram_user: TelegramUser = super(
+    def save(self, commit=True) -> TelegramUser:
+        telegram_user = super(  # pylint: disable=super-with-arguments
             TelegramUserChangeForm, self
         ).save(commit=False)
+
         telegram_id, chat_id = [
-            self.cleaned_data.get(key)
-            for key in ["telegram_id", "chat_id"]
+            self.cleaned_data.get(key) for key in ["telegram_id", "chat_id"]
         ]
 
-        if not TelegramUser.objects.filter(
-                telegram_id=telegram_id
-        ).exists():
+        if not TelegramUser.objects.filter(telegram_id=telegram_id).exists():
             telegram_user.set_chat_id(chat_id)
         telegram_user.save()
 
@@ -73,20 +67,25 @@ class TelegramUserLoginForm(forms.Form):
     def __init__(self, *args, request=None, **kwargs):
         self.telegram_user = None
         self.request = request
-        super(TelegramUserLoginForm, self).__init__(*args, **kwargs)
+
+        super(  # pylint: disable=super-with-arguments
+            TelegramUserLoginForm, self
+        ).__init__(*args, **kwargs)
+
         self.fields["password"].label = "Chat id"
         self.fields["username"].label = "Telegram id"
 
-    def clean(self):
+    def clean(self) -> Dict:
         telegram_id = self.cleaned_data.get("username")
         chat_id = self.cleaned_data.get("password")
+
         if telegram_id is not None and chat_id:
             self.telegram_user = authenticate(
                 self.request, telegram_id=telegram_id, chat_id=chat_id
             )
         return self.cleaned_data
 
-    def get_user(self):
+    def get_user(self) -> TelegramUser | None:
         """
         @return: Telegram user instance
         """
@@ -94,18 +93,11 @@ class TelegramUserLoginForm(forms.Form):
 
     username = forms.CharField(
         widget=forms.TextInput(
-            attrs={
-                "class": "form-control",
-                "placeholder": "",
-                "id": "telegram_id"}
+            attrs={"class": "form-control", "placeholder": "", "id": "telegram_id"}
         )
     )
     password = forms.CharField(
         widget=forms.PasswordInput(
-            attrs={
-                "class": "form-control",
-                "placeholder": "",
-                "id": "chat_id"
-            }
+            attrs={"class": "form-control", "placeholder": "", "id": "chat_id"}
         )
     )

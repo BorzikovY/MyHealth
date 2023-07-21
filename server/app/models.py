@@ -113,30 +113,33 @@ class Subscriber(models.Model):
         verbose_name="Гендер",
         default="helicopter",
         max_length=gender_length(GENDERS),
-        null=True, blank=True
+        null=True,
+        blank=True,
     )
     age = models.PositiveSmallIntegerField(
-        verbose_name="Возраст",
-        blank=True, null=True
+        verbose_name="Возраст", blank=True, null=True
     )
     height = models.FloatField(
         verbose_name="Рост",
         validators=[MinValueValidator(1), MaxValueValidator(3)],
-        blank=True, null=True
+        blank=True,
+        null=True,
     )
     weight = models.FloatField(
         verbose_name="Вес",
         validators=[MinValueValidator(20), MaxValueValidator(200)],
-        blank=True, null=True
+        blank=True,
+        null=True,
     )
-    training_program = models.ForeignKey("TrainingProgram",
-                                         verbose_name="Тренировочная программа",
-                                         on_delete=models.SET_NULL,
-                                         related_name="subscribers",
-                                         related_query_name="subscriber_set",
-                                         null=True,
-                                         blank=True
-                                         )
+    training_program = models.ForeignKey(
+        "TrainingProgram",
+        verbose_name="Тренировочная программа",
+        on_delete=models.SET_NULL,
+        related_name="subscribers",
+        related_query_name="subscriber_set",
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return str(self.telegram_user)
@@ -172,9 +175,10 @@ class TrainingProgram(models.Model):
         verbose_name="Кол-во недель", validators=[MinValueValidator(1)]
     )
     trainings = models.ManyToManyField(
-        "Training", verbose_name="Тренировки",
+        "Training",
+        verbose_name="Тренировки",
         related_query_name="training_programs_set",
-        related_name="training_programs"
+        related_name="training_programs",
     )
     sport_nutrition = models.ForeignKey(
         "SportNutrition",
@@ -202,6 +206,7 @@ class TrainingProgram(models.Model):
         )
         if output.get("time", None) is not None:
             return output.get("time") / len(trainings)
+        return None
 
     @property
     def training_count(self) -> int:
@@ -380,11 +385,13 @@ class Portion(models.Model):
     carbs = models.FloatField(
         verbose_name="Углеводы", validators=[MinValueValidator(0)]
     )
-    sport_nutrition = models.ForeignKey(SportNutrition,
-                                        verbose_name="Спортивное питание",
-                                        on_delete=models.CASCADE,
-                                        related_name="portions",
-                                        related_query_name="portion_set")
+    sport_nutrition = models.ForeignKey(
+        SportNutrition,
+        verbose_name="Спортивное питание",
+        on_delete=models.CASCADE,
+        related_name="portions",
+        related_query_name="portion_set",
+    )
 
     def __str__(self):
         return f"{self.name}"

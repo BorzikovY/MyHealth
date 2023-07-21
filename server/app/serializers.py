@@ -1,26 +1,23 @@
+"""Import modules to work with serializers"""
+from abc import abstractmethod
+
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
-from rest_framework import serializers
+from django.db.models import Model
+from rest_framework.serializers import (
+    ModelSerializer,
+    ValidationError as SerializerError,
+    CharField,
+    Serializer,
+)
 
 from app.models import TelegramUser, Subscriber, TrainingProgram, SportNutrition
 
 
-class InstanceCreationMixin:
-    class Meta:
-        model = None
-        fields = None
-
-    def _blank(self):
-        instance = self.Meta.model()
-        for field in set(self.Meta.fields):
-            try:
-                setattr(instance, field, None)
-            except AttributeError:
-                pass
-        return instance
-
-    def get_instance(self, request):
-        return None
+class InstanceCreationMixin:  # pylint: disable=too-few-public-methods
+    """
+    Creates instance of model during initialization
+    """
 
     def __init__(self, context):
         request = context.get("request")
@@ -30,25 +27,52 @@ class InstanceCreationMixin:
         else:
             self.instance = None
 
+    def _blank(self) -> Model:
+        instance = self.Meta.model()
+        for field in set(self.Meta.fields):
+            try:
+                setattr(instance, field, None)
+            except AttributeError:
+                pass
+        return instance
 
-class InitSerializerMixin:
+    @abstractmethod
+    def get_instance(self, request) -> Model | None:
+        """
+        Override this method to specify getting
+        instance object for each model serializer
+        @param request:
+        @return:
+        """
+        return None
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
+
+        model = Model
+        fields = []
+
+
+class InitSerializerMixin:  # pylint: disable=too-few-public-methods
+    """
+    Class which contain initialization logic for each model serializer
+    """
+
     def __init__(self, *args, **kwargs):
-        serializers.ModelSerializer.__init__(
+        ModelSerializer.__init__(  # pylint: disable=non-parent-init-called
             self, *args, **kwargs
         )
-        InstanceCreationMixin.__init__(
+        InstanceCreationMixin.__init__(  # pylint: disable=non-parent-init-called
             self, kwargs.get("context", {})
         )
 
 
-class SubscriberSerializer(serializers.ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+class SubscriberSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+    """
+    Subscriber model serializer
+    """
 
-    class Meta:
-        model = Subscriber
-        read_only_fields = ["id", "is_adult"]
-        fields = ["id", "gender", "age", "height", "weight", "is_adult"]
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         InitSerializerMixin.__init__(self, *args, **kwargs)
 
     def get_instance(self, request):
@@ -63,54 +87,83 @@ class SubscriberSerializer(serializers.ModelSerializer, InstanceCreationMixin, I
         return self.instance
 
     def delete(self):
+        """Delete instance function"""
         self.instance.delete()
 
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
 
-class UserSerializer(serializers.ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+        model = Subscriber
+        read_only_fields = ["id", "is_adult"]
+        fields = ["id", "gender", "age", "height", "weight", "is_adult"]
+
+
+class UserSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+    """
+    User model serializer
+    """
+
     subscriber = SubscriberSerializer(read_only=True)
-    chat_id = serializers.CharField(required=True, write_only=True, max_length=128)
+    chat_id = CharField(required=True, write_only=True, max_length=128)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         InitSerializerMixin.__init__(self, *args, **kwargs)
 
     def create(self, validated_data):
         try:
             user = TelegramUser.objects.create_user(**validated_data)
         except ValueError as error:
-            raise serializers.ValidationError(error) from error
-        else:
-            return user
+            raise SerializerError(error) from error
+
+        self.instance = user
+        return user
 
     def get_instance(self, request):
         return request.user
 
-    class Meta:
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
+
         model = TelegramUser
         read_only_fields = ("id", "balance", "subscriber")
         fields = (
-            "id", "telegram_id", "chat_id", "first_name",
-            "last_name", "balance", "subscriber"
+            "id",
+            "telegram_id",
+            "chat_id",
+            "first_name",
+            "last_name",
+            "balance",
+            "subscriber",
         )
 
 
-class NutritionSerializer(serializers.ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+class NutritionSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+    """
+    Nutrition model serializer
+    """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         InitSerializerMixin.__init__(self, *args, **kwargs)
 
-    class Meta:
+    def get_instance(self, request):
+        pass
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
+
         model = SportNutrition
-        fields = (
-            "name", "description", "dosages",
-            "use", "contraindications"
-        )
+        fields = ("name", "description", "dosages", "use", "contraindications")
         read_only_fields = fields
 
 
-class ProgramSerializer(serializers.ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+    """
+    Program model serializer
+    """
+
     nutrition = NutritionSerializer(read_only=True)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         if kwargs.get("program_id"):
             self.program_id = kwargs.pop("program_id")
         InitSerializerMixin.__init__(self, *args, **kwargs)
@@ -126,33 +179,46 @@ class ProgramSerializer(serializers.ModelSerializer, InstanceCreationMixin, Init
         subscriber.save()
         return self.instance
 
-    class Meta:
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
+
         model = TrainingProgram
         fields = (
-            "name", "description", "image", "weeks",
-            "avg_training_time", "training_count",
-            "difficulty", "nutrition"
+            "name",
+            "description",
+            "image",
+            "weeks",
+            "avg_training_time",
+            "training_count",
+            "difficulty",
+            "nutrition",
         )
         read_only_fields = fields
 
 
-class UserUpdateSerializer(UserSerializer):
-    class Meta:
+class UserUpdateSerializer(UserSerializer):  # pylint: disable=too-many-ancestors
+    """
+    User update serializer
+    """
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
+
         model = TelegramUser
         fields = ("first_name", "last_name")
 
 
-class UserLoginSerializer(serializers.Serializer):
-    telegram_id = serializers.CharField(max_length=32, required=True)
-    chat_id = serializers.CharField(required=True, write_only=True, max_length=128)
+class UserLoginSerializer(Serializer):  # pylint: disable=abstract-method
+    """
+    User login serializer
+    """
 
-    def validate(self, data):
+    telegram_id = CharField(max_length=32, required=True)
+    chat_id = CharField(required=True, write_only=True, max_length=128)
+
+    def validate(self, attrs):
         try:
-            user = authenticate(self.context["request"], **data)
+            user = authenticate(self.context["request"], **attrs)
         except ValidationError as error:
-            raise serializers.ValidationError(error.message)
-        else:
-            return {"user": user}
-
-
-
+            raise SerializerError(error.message) from error
+        return {"user": user}

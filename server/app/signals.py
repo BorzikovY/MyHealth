@@ -25,6 +25,16 @@ def remove_file(sender, instance, **kwargs) -> None:  # pylint: disable=unused-a
                 os.remove(abs_file_path)
 
 
-def create_auth_token(sender, instance=None, created=False, **kwargs):
+def create_auth_token(
+    sender, instance=None, created=False, **kwargs  # pylint: disable=unused-argument
+) -> None:
+    """
+    Function which add tokens to created users
+    @param sender:
+    @param instance:
+    @param created:
+    @param kwargs:
+    @return: None
+    """
     if created:
-        Token.objects.create(user=instance)
+        Token.objects.create(user=instance)  # pylint: disable=no-member

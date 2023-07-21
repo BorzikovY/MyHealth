@@ -1,8 +1,8 @@
 """import module that register models"""
 from datetime import timedelta
+from typing import Iterable
 
 from django.contrib import admin
-from django.contrib.auth.models import User
 
 from app.models import (
     TelegramUser,
@@ -14,7 +14,7 @@ from app.models import (
     Exercise,
     Approach,
 )
-from app.forms import TelegramUserChangeForm, TelegramUserCreationForm
+from app.forms import TelegramUserChangeForm
 
 admin.register(Subscriber)
 admin.register(Exercise)
@@ -38,11 +38,12 @@ class TelegramUserAdmin(admin.ModelAdmin):
         "is_staff",
     )
 
-    def get_readonly_fields(self, request, instance=None):
-        if instance is not None:
-            return ('chat_id',)
-        else:
-            return super(TelegramUserAdmin, self).get_readonly_fields(request, instance)
+    def get_readonly_fields(self, request, obj=None) -> Iterable:
+        if obj is not None:
+            return ("chat_id",)
+        return super(  # pylint: disable=super-with-arguments
+            TelegramUserAdmin, self
+        ).get_readonly_fields(request, obj)
 
     fieldsets = (
         (None, {"fields": ("telegram_id", "chat_id", "first_name", "last_name")}),
@@ -97,7 +98,7 @@ class TrainingProgramAdmin(admin.ModelAdmin):
 
     difficulty.short_description = "Сложность"
 
-    def avg_training_time(self, instance: TrainingProgram) -> timedelta:
+    def avg_training_time(self, instance: TrainingProgram) -> timedelta | None:
         """
 
         @param instance:
@@ -146,7 +147,7 @@ class SubscriberAdmin(admin.ModelAdmin):
 
     list_display = ("telegram_user", "gender", "is_adult")
 
-    def is_adult(self, instance: Subscriber) -> bool:
+    def is_adult(self, instance: Subscriber) -> bool | None:
         """
         age is over 18 or not
         @param instance:
