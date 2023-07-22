@@ -177,7 +177,7 @@ class TrainingProgram(models.Model):
     trainings = models.ManyToManyField(
         "Training",
         verbose_name="Тренировки",
-        related_query_name="training_programs_set",
+        related_query_name="training_program_set",
         related_name="training_programs",
     )
     sport_nutrition = models.ForeignKey(
@@ -199,7 +199,7 @@ class TrainingProgram(models.Model):
         @return: timedelta
         """
         trainings = Training.objects.filter(  # pylint: disable=no-member
-            training_programs_set=self
+            training_program_set=self
         )
         output = trainings.aggregate(
             time=Sum(F("approach_set__time") + F("approach_set__rest"))
@@ -215,7 +215,7 @@ class TrainingProgram(models.Model):
         @return: int
         """
         count = Training.objects.filter(  # pylint: disable=no-member
-            training_programs_set=self
+            training_program_set=self
         ).count()
         return count
 
@@ -226,7 +226,7 @@ class TrainingProgram(models.Model):
         @return: float
         """
         queryset = Training.objects.filter(  # pylint: disable=no-member
-            training_programs_set=self
+            training_program_set=self
         ).aggregate(Avg("difficulty"))
         return queryset.get("difficulty__avg")
 

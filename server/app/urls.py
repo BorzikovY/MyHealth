@@ -5,13 +5,31 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
 
-from app.views import UserApi, SubscriberApi, ProgramApi, AuthToken
-
+from app.views import (
+    AuthToken,
+    UserApi,
+    SubscriberApi,
+    ProgramApi,
+    NutritionApi,
+    TrainingApi,
+    ExerciseApi,
+    ProgramListApi,
+    NutritionListApi,
+    TrainingListApi,
+    ExerciseListApi
+)
 
 api_routes = [
     path("user/", UserApi.as_view()),
     path("subscribe/", SubscriberApi.as_view()),
     path("program/<int:program_id>", ProgramApi.as_view()),
+    path("nutrition/<int:nutrition_id>", NutritionApi.as_view()),
+    path("training/<int:training_id>", TrainingApi.as_view()),
+    path("exercise/<int:exercise_id>", ExerciseApi.as_view()),
+    path("program/list", ProgramListApi.as_view({'get': 'list'})),
+    path("nutrition/list", NutritionListApi.as_view({'get': 'list'})),
+    path("training/list", TrainingListApi.as_view({'get': 'list'})),
+    path("exercise/list", ExerciseListApi.as_view({'get': 'list'}))
 ]
 
 
