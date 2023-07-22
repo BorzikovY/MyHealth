@@ -1,2 +1,10 @@
- /.idea
-__pycache__/
+/.idea
+/venv/*
+/server/.env.prod
+/server/.env.dev
+/server/db.sqlite3
+/server/server/__pycache__/*
+/server/app/__pycache__/*
+/server/app/migrations/*
+/server/media/*
+/server/logs/*
