@@ -106,22 +106,10 @@ class RestApi(type):
     def get(
             self, request, **kwargs
     ):  # pylint: disable=unused-argument, bad-mcs-method-argument
-        """
-        Get request
-        @param request:
-        @param kwargs:
-        @return:
-        """
         serializer = self.get_serializer(**kwargs)
         return Response(serializer.data)
 
     def post(self, request, **kwargs):  # pylint: disable=bad-mcs-method-argument
-        """
-        Post request
-        @param request:
-        @param kwargs:
-        @return:
-        """
         serializer = self.get_serializer(data=request.data, **kwargs)
         if serializer.is_valid(raise_exception=True):
             serializer.create(serializer.validated_data)
@@ -129,12 +117,6 @@ class RestApi(type):
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
     def put(self, request, **kwargs):  # pylint: disable=bad-mcs-method-argument
-        """
-        Put request
-        @param request:
-        @param kwargs:
-        @return:
-        """
         serializer = self.get_serializer(data=request.data, **kwargs)
         if serializer.is_valid(raise_exception=True):
             serializer.update(serializer.instance, serializer.validated_data)
@@ -144,12 +126,6 @@ class RestApi(type):
     def delete(
             self, request, **kwargs
     ):  # pylint: disable=bad-mcs-method-argument, unused-argument
-        """
-        Delete request
-        @param request:
-        @param kwargs:
-        @return:
-        """
         serializer = self.get_serializer(**kwargs)
         serializer.delete()  # pylint: disable=no-member
         return Response(status=HTTP_204_NO_CONTENT)
