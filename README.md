@@ -102,7 +102,8 @@
 1. `docker-compose build`
 2. `docker-composr up -d`
 3. `docker exec -ti myhealth_backend_1 /bin/bash`
-4. `python manage.py migrate`
-5. `python manage.py createsuperuser`
+4. `export env_file=your_env_file_name`
+5. `python manage.py migrate`
+6. `python manage.py createsuperuser`
 
 🥳

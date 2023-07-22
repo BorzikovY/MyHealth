@@ -42,7 +42,8 @@
 {% endblocktranslate %}
 </p>
 {% endif %}
-<form method="post" id="login-form">{% csrf_token %}
+<form method="post" id="login-form">
+    {% csrf_token %}
   <div class="form-row" style="display: flex; flex-direction: column;">
     {{ form.username.errors }}
     {{ form.username.label_tag }} {{ form.username }}
