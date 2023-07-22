@@ -4,6 +4,8 @@
 
 ### 1. Создание файла с конфигом `.env.dev` / `.env.prod`
 
+***
+
 > db_name=`db_name`
 > 
 > db_user=`db_user`
