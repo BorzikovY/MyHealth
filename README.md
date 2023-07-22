@@ -2,7 +2,32 @@
 
 ***
 
-### 1. Подключение СУБД postgres к проекту
+### 1. Создание файла с конфигом `.env.dev` / `.env.prod`
+
+> db_name=`db_name`
+> 
+> db_user=`db_user`
+> 
+> db_password=`db_password`
+> 
+> db_host=`db_host`
+>
+> db_port=`db_port`
+> 
+> secret_key=`secret_key`
+> 
+> debug=`debug`
+> 
+> allowed_hosts=`localhost` `127.0.0.1`
+
+1. В `docker-compose.yml` в сервисе `backend` поменяйте название файла с конфигом у `command`
+2. В `docker-compose.yml` в сервисе `postgres` поменяйте переменные `environment` на переменные из конфига
+
+***
+
+***
+
+### 2. Подключение СУБД postgres к проекту
 
 ***
 
@@ -32,7 +57,7 @@
 
 ***
 
-### 2. Настройка линтеров
+### 3. Настройка линтеров
 
 ***
 
@@ -56,7 +81,7 @@
 
 ***
 
-### 3. Настройка Docker 😈
+### 4. Настройка Docker 😈
 
 ***
 
@@ -76,7 +101,7 @@
 
 1. `docker-compose build`
 2. `docker-composr up -d`
-3. `docker exex -ti myhealth_server_1 /bin/bash`
+3. `docker exec -ti myhealth_backend_1 /bin/bash`
 4. `python manage.py migrate`
 5. `python manage.py createsuperuser`
 
