@@ -31,6 +31,8 @@ SECRET_KEY = config.get("secret_key")
 DEBUG = int(config.get("debug"))
 
 ALLOWED_HOSTS = config.get("allowed_hosts").split()
+CSRF_TRUSTED_ORIGINS = config.get("trusted_hosts").split()
+CORS_ORIGIN_WHITELIST = config.get("cors_hosts").split()
 
 
 # Application definition

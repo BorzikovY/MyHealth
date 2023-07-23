@@ -21,6 +21,10 @@
 > debug=`debug`
 > 
 > allowed_hosts=`localhost` `127.0.0.1`
+> 
+> trusted_hosts=`localhost` `127.0.0.1`
+> 
+> cors_hosts=`localhost` `127.0.0.1`
 
 1. В `docker-compose.yml` в сервисе `backend` поменяйте название файла с конфигом у `command`
 2. В `docker-compose.yml` в сервисе `postgres` поменяйте переменные `environment` на переменные из конфига
@@ -104,6 +108,7 @@
 2. `docker-composr up -d`
 3. `docker exec -ti myhealth_backend_1 /bin/bash`
 4. `export env_file=your_env_file_name`
+5. `python manage.py makemigrations app`
 5. `python manage.py migrate`
 6. `python manage.py createsuperuser`
 

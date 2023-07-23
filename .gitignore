@@ -8,3 +8,5 @@
 /server/app/migrations/*
 /server/media/*
 /server/logs/*
+
+/bot/.env
