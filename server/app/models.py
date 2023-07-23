@@ -140,6 +140,15 @@ class Subscriber(models.Model):
         null=True,
         blank=True,
     )
+    sport_nutrition = models.ForeignKey(
+        "SportNutrition",
+        verbose_name="Спортивное питание",
+        on_delete=models.SET_NULL,
+        related_name="subscribers",
+        related_query_name="subscriber_set",
+        null=True,
+        blank=True
+    )
 
     def __str__(self):
         return str(self.telegram_user)
