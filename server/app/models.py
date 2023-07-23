@@ -352,8 +352,8 @@ class SportNutrition(models.Model):
 
     name = models.CharField(verbose_name="Название", max_length=32)
     description = models.TextField(verbose_name="Описание")
-    dosages = models.CharField(verbose_name="Дозировки", max_length=100)
-    use = models.CharField(verbose_name="Способ применения", max_length=100)
+    dosages = models.TextField(verbose_name="Дозировки")
+    use = models.TextField(verbose_name="Способ применения")
     contraindications = models.CharField(
         verbose_name="Противопоказания", max_length=100
     )
