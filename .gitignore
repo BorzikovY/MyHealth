@@ -6,5 +6,8 @@
 /server/server/__pycache__/*
 /server/app/__pycache__/*
 /server/app/migrations/*
+/server/app/tests/__pycache__/*
 /server/media/*
 /server/logs/*
+
+/bot/.env

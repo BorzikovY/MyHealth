@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import rest_framework.permissions
@@ -31,6 +32,8 @@ SECRET_KEY = config.get("secret_key")
 DEBUG = int(config.get("debug"))
 
 ALLOWED_HOSTS = config.get("allowed_hosts").split()
+CSRF_TRUSTED_ORIGINS = config.get("trusted_hosts").split()
+CORS_ORIGIN_WHITELIST = config.get("cors_hosts").split()
 
 
 # Application definition
@@ -43,7 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "rest_framework.authtoken",
+    'rest_framework_simplejwt',
     "drf_yasg",
     "app",
 ]
@@ -154,22 +157,34 @@ LOGGING = {
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-    # 'DEFAULT_PERMISSION_CLASSES': [
-    #     'rest_framework.permissions.IsAuthenticated',
-    #     'rest_framework.permissions.AllowAny'
-    # ]
 }
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
-        'api_key': {
+        'Authorization': {
             'type': 'apiKey',
             'in': 'header',
             'name': 'Authorization'
         }
     },
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": False,
+
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+
+    "TOKEN_OBTAIN_SERIALIZER": "app.serializers.UserLoginSerializer",
 }
 
 

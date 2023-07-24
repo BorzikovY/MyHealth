@@ -2,6 +2,7 @@
 from abc import abstractmethod
 
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
 from django.core.exceptions import ValidationError
 from django.db.models import Model
 from rest_framework.serializers import (
@@ -10,6 +11,8 @@ from rest_framework.serializers import (
     CharField,
     Serializer
 )
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from app.models import (
     TelegramUser,
@@ -284,12 +287,6 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
             return query.first()
         return None
 
-    def create(self, validated_data):
-        subscriber = self.context["request"].user.subscriber
-        subscriber.training_program = self.instance
-        subscriber.save()
-        return self.instance
-
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta class"""
 
@@ -331,6 +328,14 @@ class UserLoginSerializer(Serializer):  # pylint: disable=abstract-method
     def validate(self, attrs):
         try:
             user = authenticate(self.context["request"], **attrs)
+            refresh = RefreshToken.for_user(user)
+
+            if api_settings.UPDATE_LAST_LOGIN:
+                update_last_login(None, user)
+
+            return {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token)
+            }
         except ValidationError as error:
             raise SerializerError(error.message) from error
-        return {"user": user}

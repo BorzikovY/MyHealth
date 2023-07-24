@@ -21,9 +21,14 @@
 > debug=`debug`
 > 
 > allowed_hosts=`localhost` `127.0.0.1`
+> 
+> trusted_hosts=`localhost` `127.0.0.1`
+> 
+> cors_hosts=`localhost` `127.0.0.1`
 
-1. В `docker-compose.yml` в сервисе `backend` поменяйте название файла с конфигом у `command`
-2. В `docker-compose.yml` в сервисе `postgres` поменяйте переменные `environment` на переменные из конфига
+1. В среде разработки выполните команду `export env_file=your_config_name`
+2. `docker-compose.yml` в сервисе `backend` поменяйте название файла с конфигом у `command`
+3. `docker-compose.yml` в сервисе `postgres` поменяйте переменные `environment` на переменные из конфига
 
 ***
 
@@ -68,8 +73,6 @@
 > `python -m pip install black`
 > 
 > `python -m pip install flake8`
-> 
-> export DJANGO_SETTING_MODULE=server.settings
 
 1. Для запуска pylint: `pylint ./app`
 2. Для запуска black: `black ./app`
@@ -104,6 +107,7 @@
 2. `docker-composr up -d`
 3. `docker exec -ti myhealth_backend_1 /bin/bash`
 4. `export env_file=your_env_file_name`
+5. `python manage.py makemigrations app`
 5. `python manage.py migrate`
 6. `python manage.py createsuperuser`
 
