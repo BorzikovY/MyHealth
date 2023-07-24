@@ -16,13 +16,13 @@ class BaseAPITestCase(APITestCase):
         }
         self.invalid_user = {
             "telegram_id": 1,
-            "chat_id": "string",
+            "chat_id": None,
             "first_name": "string",
             "last_name": "string",
         }
 
 
-class UserTests(BaseAPITestCase):
+class UserCreateTests(BaseAPITestCase):
     def test_create_valid_user(self):
         response = self.client.post(
             reverse('user'),
@@ -63,3 +63,40 @@ class TokenTests(BaseAPITestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class UserTests(BaseAPITestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.post(
+            reverse('user'),
+            data=json.dumps(self.valid_user),
+            content_type='application/json'
+        )
+        self.token = self.client.post(
+            reverse('token'),
+            data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
+            content_type='application/json'
+        ).json()
+        
+    def test_get_user_valid_token(self):
+        response = self.client.get(
+            reverse('user'),
+            headers=self.token,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_get_user_invalid_token(self):
+        response = self.client.get(
+            reverse('user'),
+            headers={'Authorization': ''},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_get_user_without_token(self):
+        response = self.client.get(
+            reverse('user')
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
