@@ -32,6 +32,8 @@ SECRET_KEY = config.get("secret_key")
 DEBUG = int(config.get("debug"))
 
 ALLOWED_HOSTS = config.get("allowed_hosts").split()
+INTERNAL_IPS = ALLOWED_HOSTS
+
 CSRF_TRUSTED_ORIGINS = config.get("trusted_hosts").split()
 CORS_ORIGIN_WHITELIST = config.get("cors_hosts").split()
 
@@ -45,13 +47,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "debug_toolbar",
     "rest_framework",
-    "rest_framework.authtoken",
+    "rest_framework_simplejwt",
     "drf_yasg",
     "app",
 ]
 
 MIDDLEWARE = [
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
