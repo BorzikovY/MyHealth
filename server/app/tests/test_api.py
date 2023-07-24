@@ -50,15 +50,15 @@ class TokenTests(BaseAPITestCase):
             content_type='application/json'
         )
         response = self.client.post(
-            reverse('token'),
+            reverse('token_obtain'),
             data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
             content_type='application/json'
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_create_token_invalid_user(self):
         response = self.client.post(
-            reverse('token'),
+            reverse('token_obtain'),
             data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
             content_type='application/json'
         )
@@ -74,7 +74,7 @@ class UserTests(BaseAPITestCase):
             content_type='application/json'
         )
         response = self.client.post(
-            reverse('token'),
+            reverse('token_obtain'),
             data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
             content_type='application/json'
         ).json()
