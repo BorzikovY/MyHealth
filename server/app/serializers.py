@@ -287,12 +287,6 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
             return query.first()
         return None
 
-    def create(self, validated_data):
-        subscriber = self.context["request"].user.subscriber
-        subscriber.training_program = self.instance
-        subscriber.save()
-        return self.instance
-
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta class"""
 
