@@ -11,7 +11,7 @@ class AppConfig(AppConfig):  # pylint: disable=function-redefined
     default_auto_field = "django.db.models.BigAutoField"
     name = "app"
 
-    def ready(self):
+    def ready(self) -> None:
         from app import signals  # pylint: disable=import-outside-toplevel
         from app.models import (  # pylint: disable=import-outside-toplevel
             TrainingProgram,

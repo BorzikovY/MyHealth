@@ -12,7 +12,7 @@ services:
       - POSTGRES_DB=my_health
   backend:
     build: ./server
-    command: gunicorn -e env_file=.env.prod --workers=4 --bind 0.0.0.0:8000 server.wsgi:application
+    command: gunicorn -e env_file=.env.dev --workers=4 --bind 0.0.0.0:8000 server.wsgi:application
     volumes:
       - static_data:/usr/src/server/static
       - media_data:/usr/src/server/media

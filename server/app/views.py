@@ -7,7 +7,7 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ModelSerializer
 
-from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_201_CREATED
 from rest_framework.response import Response
 
 from app.filters import (
@@ -56,7 +56,7 @@ class AuthToken(ObtainAuthToken):
         ) = Token.objects.get_or_create(  # pylint: disable=no-member
             user=user
         )
-        return Response({"Authorization": f"Token {token.key}"})
+        return Response({"Authorization": f"Token {token.key}"}, status=HTTP_201_CREATED)
 
 
 class RestApi(type):
@@ -113,7 +113,7 @@ class RestApi(type):
         serializer = self.get_serializer(data=request.data, **kwargs)
         if serializer.is_valid(raise_exception=True):
             serializer.create(serializer.validated_data)
-            return Response(serializer.data)
+            return Response(serializer.data, status=HTTP_201_CREATED)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
     def put(self, request, **kwargs):  # pylint: disable=bad-mcs-method-argument
