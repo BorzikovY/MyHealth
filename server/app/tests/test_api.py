@@ -73,16 +73,17 @@ class UserTests(BaseAPITestCase):
             data=json.dumps(self.valid_user),
             content_type='application/json'
         )
-        self.token = self.client.post(
+        response = self.client.post(
             reverse('token'),
             data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
             content_type='application/json'
         ).json()
+        self.token = response.get('access')
         
     def test_get_user_valid_token(self):
         response = self.client.get(
             reverse('user'),
-            headers=self.token,
+            headers={'Authorization': "Bearer {token}".format(token=self.token)},
             content_type='application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)

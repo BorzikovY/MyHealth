@@ -26,8 +26,9 @@
 > 
 > cors_hosts=`localhost` `127.0.0.1`
 
-1. В `docker-compose.yml` в сервисе `backend` поменяйте название файла с конфигом у `command`
-2. В `docker-compose.yml` в сервисе `postgres` поменяйте переменные `environment` на переменные из конфига
+1. В среде разработки выполните команду `export env_file=your_config_name`
+2. `docker-compose.yml` в сервисе `backend` поменяйте название файла с конфигом у `command`
+3. `docker-compose.yml` в сервисе `postgres` поменяйте переменные `environment` на переменные из конфига
 
 ***
 
@@ -72,8 +73,6 @@
 > `python -m pip install black`
 > 
 > `python -m pip install flake8`
-> 
-> export DJANGO_SETTING_MODULE=server.settings
 
 1. Для запуска pylint: `pylint ./app`
 2. Для запуска black: `black ./app`
