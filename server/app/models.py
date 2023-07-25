@@ -355,7 +355,10 @@ class SportNutrition(models.Model):
     dosages = models.CharField(verbose_name="Дозировки", max_length=100)
     use = models.CharField(verbose_name="Способ применения", max_length=100)
     contraindications = models.CharField(
-        verbose_name="Противопоказания", max_length=100
+        verbose_name="Противопоказания",
+        max_length=100,
+        null=True,
+        blank=True
     )
 
     def __str__(self):

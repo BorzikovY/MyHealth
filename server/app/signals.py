@@ -13,7 +13,7 @@ def remove_file(sender, instance, **kwargs) -> None:  # pylint: disable=unused-a
     @param kwargs:
     @return: None
     """
-    if not instance._state.adding:  # pylint: disable=protected-access
+    if sender.objects.filter(id=instance.id).exists():
         obj = sender.objects.get(id=instance.id)
         files = filter(lambda field: hasattr(obj, field), ["image", "video"])
         for file in filter(
