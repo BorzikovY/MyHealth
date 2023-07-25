@@ -93,7 +93,6 @@ class ModelCreationTestCase(TestCase, metaclass=ModelCreationMetaCase):
             "id": 1,
             "name": "Name",
             "description": "Description",
-            "image": "",
             "weeks": 12
         },
         Training: {"id": 1, "name": "Name", "difficulty": 3.},
@@ -101,8 +100,6 @@ class ModelCreationTestCase(TestCase, metaclass=ModelCreationMetaCase):
             "id": 1,
             "name": "Name",
             "description": "Description",
-            "image": "",
-            "video": ""
         },
         Approach: {
             "id": 1,

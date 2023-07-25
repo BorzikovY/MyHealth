@@ -1,3 +1,7 @@
+from abc import abstractmethod
+from random import randint
+
+from django.contrib.auth.models import Group
 from django.urls import include, path, reverse
 import json
 import itertools
@@ -109,7 +113,7 @@ class UserTests(BaseAPITestCase):
             content_type='application/json'
         ).json()
         self.token = response.get('access')
-        
+
     def test_get_user_valid_token(self):
         response = self.client.get(
             reverse('user'),
@@ -249,3 +253,70 @@ class SubscriberTests(BaseAPITestCase):
             reverse('subscribe'),
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    ...
+
+
+class SubscriberRegisterMixin:
+    def get_token(self, client, data):
+        user = TelegramUser.objects.create_user(**data)
+        group = Group.objects.create(name="Staff")
+        user.groups_set = [group]
+        response = client.post(
+            reverse('token_obtain'),
+            data=json.dumps({"telegram_id": user.telegram_id, "chat_id": user.chat_id}),
+            content_type='application/json'
+        ).json()
+        return response.get('access')
+
+    def subscribe_user(self, client, data):
+        token = self.get_token(client, data)
+        client.post(
+            reverse('subscribe'),
+            headers={"Authorization": f"Bearer {token}"},
+            content_type='application/json'
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+
+class ApiListTest(SubscriberRegisterMixin):
+
+    client = None
+    valid_user = None
+    reverse_name = None
+
+    @abstractmethod
+    def get_data(self, index):
+        pass
+
+    def setUp(self, model) -> None:
+        self.model = model
+        self.headers = self.subscribe_user(self.client, self.valid_user)
+        self.objects, self.url = [], reverse(self.reverse_name)
+        for i in range(randint(3, 7)):
+            instance = self.model.objects.create(
+                **self.get_data(i)
+            )
+            self.objects.append(instance)
+
+
+class ProgramListTest(BaseAPITestCase, ApiListTest):
+
+    def get_data(self, index):
+        return {
+            "name": f"Title_{index}",
+            "description": "Description",
+            "weeks": randint(4, 12)
+        }
+
+    def setUp(self) -> None:
+        BaseAPITestCase.setUp(self)
+        self.reverse_name = "program-list"
+        ApiListTest.setUp(self, TrainingProgram)
+
+    def test_amount(self):
+        response = self.client.get(
+            self.url,
+            headers=self.headers,
+            content_type='application/json'
+        ).json()
+        self.assertEqual(len(response), self.model.objects.count())
