@@ -1,5 +1,7 @@
+from datetime import timedelta
+
 from django.test import TestCase, SimpleTestCase
-from app.models import TelegramUser, Subscriber
+from app.models import TelegramUser, Subscriber, TrainingProgram, Training, Exercise, Approach, SportNutrition, Portion
 
 
 class UserCreationTestCase(TestCase):
@@ -62,38 +64,69 @@ class UserDataTestCase(TestCase):
 
 class ModelCreationMetaCase(type):
 
-    __queries__ = []
+    __instances__ = []
 
     def __new__(cls, name, bases, kwargs):
         for index, (model, data) in enumerate(kwargs.get("__models__", {}).items()):
-            commit = True if index != 0 else False
-            test_case = cls.test(model, commit, data=data)
-            kwargs[f"test_{model.__name__}_creation"] = test_case
-        kwargs['setUp'] = cls.setUp()
+            test_case = cls.test(model, data=data)
+            kwargs[f"test_{index + 1}_{model.__name__}_creation"] = test_case
         return super(ModelCreationMetaCase, cls).__new__(cls, name, bases, kwargs)
 
-    # def setUp(cls):
-    #     def wrapper():
-    #     for query in cls.__queries__:
-    #         query()
-
     @classmethod
-    def test(cls, model, commit=False, **kwargs):
+    def test(cls, model, **kwargs):
         def wrapper(*args):
+            for instance in cls.__instances__[:len(cls.__instances__)]:
+                instance.save()
             pre_count = model.objects.count()
-            query = model.objects.create(**kwargs["data"]).query
-            if commit:
-                cls.__queries__.append(query)
+            obj = model.objects.create(**kwargs["data"])
+            cls.__instances__.append(obj)
             assert pre_count + 1 == model.objects.count()
         return wrapper
 
 
 class ModelCreationTestCase(TestCase, metaclass=ModelCreationMetaCase):
 
-    def setUp(self) -> None:
-        return
-
     __models__ = {
-        TelegramUser: {"id": 2, "telegram_id": "123", "chat_id": "123"},
-        Subscriber: {"id": 1, "telegram_user_id": 1}
+        TelegramUser: {"id": 1, "telegram_id": "123", "chat_id": "123"},
+        Subscriber: {"id": 1, "telegram_user_id": 1},
+        TrainingProgram: {
+            "id": 1,
+            "name": "Name",
+            "description": "Description",
+            "image": "",
+            "weeks": 12
+        },
+        Training: {"id": 1, "name": "Name", "difficulty": 3.},
+        Exercise: {
+            "id": 1,
+            "name": "Name",
+            "description": "Description",
+            "image": "",
+            "video": ""
+        },
+        Approach: {
+            "id": 1,
+            "time": timedelta(minutes=4),
+            "repetition_count": 23,
+            "rest": timedelta(seconds=30),
+            "training_id": 1,
+            "exercise_id": 1
+        },
+        SportNutrition: {
+            "id": 1,
+            "name": "Name",
+            "description": "Description",
+            "dosages": "",
+            "use": ""
+        },
+        Portion: {
+            "id": 1,
+            "name": "Name",
+            "description": "Description",
+            "calories": 0,
+            "fats": 0,
+            "carbs": 0,
+            "proteins": 100_000,
+            "sport_nutrition_id": 1
+        }
     }
