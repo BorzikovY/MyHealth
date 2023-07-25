@@ -217,7 +217,6 @@ class SubscriberTests(BaseAPITestCase):
             data=json.dumps(self.valid_user),
             content_type='application/json'
         )
-
         self.token = self.client.post(
             reverse('token_obtain'),
             data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
@@ -245,7 +244,7 @@ class SubscriberTests(BaseAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def get_subscriber_without_token(self):
+    def test_get_subscriber_without_token(self):
         response = self.client.get(
             reverse('subscribe'),
         )
