@@ -43,12 +43,15 @@ class UserCreateTests(BaseAPITestCase):
 
 
 class TokenTests(BaseAPITestCase):
-    def test_create_token_valid_user(self):
+    def setUp(self) -> None:
+        super().setUp()
         self.client.post(
             reverse('user'),
             data=json.dumps(self.valid_user),
             content_type='application/json'
         )
+
+    def test_create_token_valid_user(self):
         response = self.client.post(
             reverse('token_obtain'),
             data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
@@ -59,8 +62,35 @@ class TokenTests(BaseAPITestCase):
     def test_create_token_invalid_user(self):
         response = self.client.post(
             reverse('token_obtain'),
+            data=json.dumps(dict(itertools.islice(self.invalid_user.items(), 2))),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_refresh_valid_token(self):
+        token = self.client.post(
+            reverse('token_obtain'),
             data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
             content_type='application/json'
+        ).json().get('refresh')
+        response = self.client.post(
+            reverse('token_refresh'),
+            data=json.dumps({'refresh': '{token}'.format(token=token)}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_refresh_invalid_token(self):
+        response = self.client.post(
+            reverse('token_refresh'),
+            data=json.dumps({'refresh': ''}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_refresh_without_token(self):
+        response = self.client.post(
+            reverse('token_refresh')
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -101,3 +131,44 @@ class UserTests(BaseAPITestCase):
             reverse('user')
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_reset_valid_user(self):
+        response = self.client.put(
+            reverse('user'),
+            headers={'Authorization': "Bearer {token}".format(token=self.token)},
+            data=json.dumps({'first_name': '', 'last_name': ''}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_205_RESET_CONTENT)
+        self.assertEqual(TelegramUser.objects.count(), 1)
+        self.assertEqual(TelegramUser.objects.get().first_name, '')
+
+    # def test_reset_invalid_user(self):
+    #     response = self.client.put(
+    #         reverse('user'),
+    #         headers={'Authorization': "Bearer {token}".format(token=self.token)},
+    #         data=json.dumps({'':''}),
+    #         content_type='application/json'
+    #     )
+    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_reset_valid_user_invalid_token(self):
+        response = self.client.put(
+            reverse('user'),
+            headers={'Authorization': "Bearer "},
+            data=json.dumps({'first_name': '', 'last_name': ''}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_reset_valid_user_without_token(self):
+        response = self.client.put(
+            reverse('user'),
+            data=json.dumps({'first_name': '', 'last_name': ''}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class SubscriberTests(BaseAPITestCase):
+    ...

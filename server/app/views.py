@@ -2,8 +2,6 @@
 from typing import Dict
 
 from rest_framework import generics, viewsets
-from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ModelSerializer
 
@@ -33,7 +31,6 @@ from app.permissions import (
 )
 from app.serializers import (
     UserSerializer,
-    UserLoginSerializer,
     SubscriberSerializer,
     UserUpdateSerializer,
     ProgramSerializer,
@@ -41,28 +38,6 @@ from app.serializers import (
     TrainingSerializer,
     ExerciseSerializer
 )
-
-
-class AuthToken(ObtainAuthToken):
-    """
-    Obtain token view
-    """
-
-    serializer_class = UserLoginSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data, context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data["user"]
-        (
-            token,
-            created,  # pylint: disable=unused-variable
-        ) = Token.objects.get_or_create(  # pylint: disable=no-member
-            user=user
-        )
-        return Response({"Authorization": f"Token {token.key}"}, status=HTTP_201_CREATED)
 
 
 class RestApi(type):
