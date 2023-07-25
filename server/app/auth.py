@@ -21,7 +21,6 @@ class TelegramAuthBackend(ModelBackend):
             telegram_user: TelegramUser = TelegramUser.objects.get(
                 telegram_id=telegram_id
             )
-
             if telegram_user.check_chat_id(chat_id):
                 return telegram_user
             raise ValidationError("Chat id is incorrect")
