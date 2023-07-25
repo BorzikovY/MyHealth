@@ -51,6 +51,7 @@ SchemaView = get_schema_view(
         contact=openapi.Contact(email="bogdanbelenesku@gmail.com"),
         license=openapi.License(name="BSD License"),
     ),
+    generator_class=SchemaGenerator,
     public=True,
     permission_classes=(AllowAny,),
 )
