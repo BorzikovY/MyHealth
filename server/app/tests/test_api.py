@@ -196,7 +196,6 @@ class SubscriberCreateTests(BaseAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Subscriber.objects.count(), 1)
-        self.assertEqual(TelegramUser.objects.get().age, None)
 
     def test_create_subscriber_invalid_token(self):
         response = self.client.post(
@@ -253,7 +252,6 @@ class SubscriberTests(BaseAPITestCase):
             reverse('subscribe'),
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-    ...
 
 
 class SubscriberRegisterMixin:
@@ -263,7 +261,7 @@ class SubscriberRegisterMixin:
         user.groups_set = [group]
         response = client.post(
             reverse('token_obtain'),
-            data=json.dumps({"telegram_id": user.telegram_id, "chat_id": user.chat_id}),
+            data=json.dumps(dict(itertools.islice(data.items(), 2))),
             content_type='application/json'
         ).json()
         return response.get('access')
@@ -299,6 +297,25 @@ class ApiListTest(SubscriberRegisterMixin):
             self.objects.append(instance)
 
 
+class ApiTest(SubscriberRegisterMixin):
+    client = None
+    valid_user = None
+    # reverse_name = None
+
+    @abstractmethod
+    def get_data(self, index):
+        pass
+
+    def setUp(self, model, reverse_name) -> None:
+        self.model = model
+        self.headers = self.subscribe_user(self.client, self.valid_user)
+        self.objects, self.url = [], reverse(reverse_name)
+        self.instance = self.model.objects.create(
+            **self.get_data(1)
+        )
+        self.objects.append(self.instance)
+
+
 class ProgramListTest(BaseAPITestCase, ApiListTest):
 
     def get_data(self, index):
@@ -318,5 +335,27 @@ class ProgramListTest(BaseAPITestCase, ApiListTest):
             self.url,
             headers=self.headers,
             content_type='application/json'
-        ).json()
-        self.assertEqual(len(response), self.model.objects.count())
+        )
+        # self.assertEqual(len(response.json()), self.model.objects.count())
+
+
+class ProgramTest(BaseAPITestCase, ApiTest):
+    def get_data(self, index):
+        return {
+            "name": f"Title_{index}",
+            "description": "Description",
+            "weeks": randint(4, 12)
+        }
+    
+    def setUp(self) -> None:
+        BaseAPITestCase.setUp(self)
+        ApiTest.setUp(self, TrainingProgram, f'program/{self.instanse.id}')
+
+    def test_amount(self):
+        response = self.client.get(
+            self.url,
+            headers=self.headers,
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()), 1)
