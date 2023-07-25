@@ -25,6 +25,7 @@ from app.filters import (
 from app.models import TrainingProgram, SportNutrition, Training, Exercise
 from app.permissions import (
     UnauthenticatedPost,
+    AuthenticatedPost,
     SubscribePermission,
     UnauthenticatedGet,
     GroupPermission
@@ -141,7 +142,7 @@ class SubscriberApi(generics.GenericAPIView, metaclass=RestApi):
 
     __methods__ = ["get", "post", "put", "delete"]
     serializer_class = SubscriberSerializer
-    permission_classes = (SubscribePermission | UnauthenticatedPost,)
+    permission_classes = (SubscribePermission | AuthenticatedPost,)
 
 
 class ProgramApi(generics.GenericAPIView, metaclass=RestApi):

@@ -170,5 +170,83 @@ class UserTests(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+class SubscriberCreateTests(BaseAPITestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.post(
+            reverse('user'),
+            data=json.dumps(self.valid_user),
+            content_type='application/json'
+        )
+        self.token = self.client.post(
+            reverse('token_obtain'),
+            data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
+            content_type='application/json'
+        ).json().get('access')
+
+    def test_create_subscriber_valid_token(self):
+        response = self.client.post(
+            reverse('subscribe'),
+            headers={'Authorization': "Bearer {token}".format(token=self.token)},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Subscriber.objects.count(), 1)
+        self.assertEqual(TelegramUser.objects.get().age, None)
+
+    def test_create_subscriber_invalid_token(self):
+        response = self.client.post(
+            reverse('subscribe'),
+            headers={'Authorization': ""},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_create_subscriber_valid_token(self):
+        response = self.client.post(
+            reverse('subscribe'),
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
 class SubscriberTests(BaseAPITestCase):
-    ...
+    def setUp(self) -> None:
+        super().setUp()
+        self.client.post(
+            reverse('user'),
+            data=json.dumps(self.valid_user),
+            content_type='application/json'
+        )
+
+        self.token = self.client.post(
+            reverse('token_obtain'),
+            data=json.dumps(dict(itertools.islice(self.valid_user.items(), 2))),
+            content_type='application/json'
+        ).json().get('access')
+        self.client.post(
+            reverse('subscribe'),
+            headers={'Authorization': "Bearer {token}".format(token=self.token)},
+            content_type='application/json'
+        )
+
+    def test_get_subscriber_valid_token(self):
+        response = self.client.get(
+            reverse('subscribe'),
+            headers={'Authorization': "Bearer {token}".format(token=self.token)},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_get_subscriber_invalid_token(self):
+        response = self.client.get(
+            reverse('subscribe'),
+            headers={'Authorization': ""},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def get_subscriber_without_token(self):
+        response = self.client.get(
+            reverse('subscribe'),
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
