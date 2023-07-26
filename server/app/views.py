@@ -221,7 +221,6 @@ class NutritionListApi(viewsets.ModelViewSet):
     queryset = SportNutrition.objects.all()
 
     def filter_queryset(self, queryset):
-        program_id = self.request.query_params.get('program_id')
         first_filter = DataFilter.filter(
             self.request.query_params.get('dosages'),
             data_class=str
@@ -240,9 +239,7 @@ class NutritionListApi(viewsets.ModelViewSet):
             first_filter(note.dosages)
             and second_filter(note.use)
             and third_filter(note.contraindications),
-            SportNutrition.objects.filter(
-                training_program_set=TrainingProgram.objects.filter(id=program_id)[:1]
-            )
+            SportNutrition.objects.all()
         )
 
         return queryset

@@ -21,7 +21,8 @@ from app.models import (
     SportNutrition,
     Training,
     Portion,
-    Exercise
+    Exercise,
+    TrainingProgramGroup
 )
 
 
@@ -271,10 +272,24 @@ class TrainingSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerM
         read_only_fields = fields
 
 
+class ProgramGroupSerializer(ModelSerializer):
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
+
+        model = TrainingProgramGroup
+        fields = (
+            "id",
+            "name",
+            "description"
+        )
+        read_only_fields = fields
+
+
 class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
     """
     Program model serializer
     """
+    group = ProgramGroupSerializer(read_only=True)
 
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         if kwargs.get("program_id"):
@@ -300,7 +315,7 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
             "avg_training_time",
             "training_count",
             "difficulty",
-            "sport_nutrition",
+            "group",
         )
         read_only_fields = fields
 

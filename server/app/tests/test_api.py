@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from datetime import timedelta
 from random import randint
 
 from django.contrib.auth.models import Group
@@ -7,7 +8,7 @@ import json
 import itertools
 from rest_framework import status
 from rest_framework.test import APITestCase
-from app.models import Subscriber, TelegramUser, Training, TrainingProgram, Exercise, SportNutrition
+from app.models import Subscriber, TelegramUser, Training, TrainingProgram, Exercise, SportNutrition, Approach
 
 
 class BaseAPITestCase(APITestCase):
@@ -258,7 +259,8 @@ class SubscriberRegisterMixin:
     def get_token(self, client, data):
         user = TelegramUser.objects.create_user(**data)
         group = Group.objects.create(name="Staff")
-        user.groups_set = [group]
+        group.user_set.add(user)
+        group.save()
         response = client.post(
             reverse('token_obtain'),
             data=json.dumps(dict(itertools.islice(data.items(), 2))),
@@ -278,23 +280,36 @@ class SubscriberRegisterMixin:
 
 class ApiListTest(SubscriberRegisterMixin):
 
-    client = None
-    valid_user = None
-    reverse_name = None
+    model = None
+    objects = []
 
     @abstractmethod
     def get_data(self, index):
         pass
 
-    def setUp(self, model) -> None:
-        self.model = model
+    def create_instance(self, index):
+        data = self.get_data(index)
+        if related := data.get("related"):
+            data.pop("related")
+        instance = self.model.objects.create(
+            **data
+        )
+        if related:
+            related_instance = related.get("instance")
+            getattr(
+                related_instance,
+                related.get("back_populated_field")
+            ).add(instance)
+            related_instance.save()
+
+        self.objects.append(instance)
+        return instance
+
+    def setUp(self) -> None:
         self.headers = self.subscribe_user(self.client, self.valid_user)
-        self.objects, self.url = [], reverse(self.reverse_name)
+        self.url = reverse(self.reverse_name)
         for i in range(randint(3, 7)):
-            instance = self.model.objects.create(
-                **self.get_data(i)
-            )
-            self.objects.append(instance)
+            self.create_instance(i)
 
 
 class ApiTest(SubscriberRegisterMixin):
@@ -318,6 +333,8 @@ class ApiTest(SubscriberRegisterMixin):
 
 class ProgramListTest(BaseAPITestCase, ApiListTest):
 
+    model = TrainingProgram
+
     def get_data(self, index):
         return {
             "name": f"Title_{index}",
@@ -328,7 +345,102 @@ class ProgramListTest(BaseAPITestCase, ApiListTest):
     def setUp(self) -> None:
         BaseAPITestCase.setUp(self)
         self.reverse_name = "program-list"
-        ApiListTest.setUp(self, TrainingProgram)
+        ApiListTest.setUp(self)
+
+    def test_amount(self):
+        response = self.client.get(
+            self.url,
+            headers=self.headers,
+            content_type='application/json'
+        ).json()
+        self.assertEqual(len(response), self.model.objects.count())
+
+
+class TrainingListTest(BaseAPITestCase, ApiListTest):
+
+    model = Training
+    program = ProgramListTest().create_instance(1)
+
+    def get_data(self, index):
+        return {
+            "related": {
+                "instance": self.program,
+                "back_populated_field": "trainings"
+            },
+            "name": "Name",
+            "difficulty": 3.
+        }
+
+    def setUp(self) -> None:
+        BaseAPITestCase.setUp(self)
+        self.reverse_name = "training-list"
+        ApiListTest.setUp(self)
+
+    def test_amount(self):
+        response = self.client.get(
+            f"{self.url}?program_id={self.program.id}",
+            headers=self.headers,
+            content_type='application/json'
+        ).json()
+        self.assertEqual(len(response), self.model.objects.count())
+
+
+class ExerciseListTest(ApiListTest):
+
+    model = Exercise
+
+    def get_data(self, index):
+        return {
+            "name": "Name",
+            "description": "Description",
+        }
+
+
+class ApproachListTest(BaseAPITestCase, ApiListTest):
+
+    model = Approach
+
+    def get_data(self, index):
+        return {
+            "time": timedelta(minutes=4),
+            "repetition_count": 23,
+            "rest": timedelta(seconds=30),
+            "training_id": self.training.id,
+            "exercise_id": self.exercise.id
+        }
+
+    def setUp(self) -> None:
+        self.training = TrainingListTest().create_instance(1)
+        self.exercise = ExerciseListTest().create_instance(1)
+        BaseAPITestCase.setUp(self)
+        self.reverse_name = "exercise-list"
+        ApiListTest.setUp(self)
+
+    def test_amount(self):
+        response = self.client.get(
+            f"{self.url}?training_id={self.training.id}",
+            headers=self.headers,
+            content_type='application/json'
+        ).json()
+        self.assertEqual(len(response), self.model.objects.count())
+
+
+class SportNutritionListTest(BaseAPITestCase, ApiListTest):
+
+    model = SportNutrition
+
+    def get_data(self, index):
+        return {
+            "name": "Name",
+            "description": "Description",
+            "dosages": "",
+            "use": ""
+        }
+
+    def setUp(self) -> None:
+        BaseAPITestCase.setUp(self)
+        self.reverse_name = "nutrition-list"
+        ApiListTest.setUp(self)
 
     def test_amount(self):
         response = self.client.get(

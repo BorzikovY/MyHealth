@@ -1,7 +1,8 @@
 from datetime import timedelta
 
 from django.test import TestCase, SimpleTestCase
-from app.models import TelegramUser, Subscriber, TrainingProgram, Training, Exercise, Approach, SportNutrition, Portion
+from app.models import TelegramUser, Subscriber, TrainingProgram, Training, Exercise, Approach, SportNutrition, Portion, \
+    TrainingProgramGroup
 
 
 class UserCreationTestCase(TestCase):
@@ -89,13 +90,23 @@ class ModelCreationTestCase(TestCase, metaclass=ModelCreationMetaCase):
     __models__ = {
         TelegramUser: {"id": 1, "telegram_id": "123", "chat_id": "123"},
         Subscriber: {"id": 1, "telegram_user_id": 1},
+        TrainingProgramGroup: {
+            "id": 1,
+            "name": "Name",
+            "description": "Description"
+        },
         TrainingProgram: {
             "id": 1,
             "name": "Name",
             "description": "Description",
-            "weeks": 12
+            "weeks": 12,
+            "group_id": 1
         },
-        Training: {"id": 1, "name": "Name", "difficulty": 3.},
+        Training: {
+            "id": 1,
+            "name": "Name",
+            "difficulty": 3.
+        },
         Exercise: {
             "id": 1,
             "name": "Name",
