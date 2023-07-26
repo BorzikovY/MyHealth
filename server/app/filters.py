@@ -32,12 +32,6 @@ class ProgramFilterBackend(BaseFilterBackend):
 
 class NutritionFilterBackend(BaseFilterBackend):
     def get_schema_fields(self, view):
-        program_id = coreapi.Field(
-            name='program_id',
-            location='query',
-            required=True,
-            type='string'
-        )
         dosages = coreapi.Field(
             name='dosages',
             location='query',
@@ -56,7 +50,7 @@ class NutritionFilterBackend(BaseFilterBackend):
             required=False,
             type='string'
         )
-        return [program_id, dosages, use, contraindications]
+        return [dosages, use, contraindications]
 
 
 class TrainingFilterBackend(BaseFilterBackend):

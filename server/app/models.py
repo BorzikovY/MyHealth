@@ -140,6 +140,15 @@ class Subscriber(models.Model):
         null=True,
         blank=True,
     )
+    sport_nutrition = models.ForeignKey(
+        "SportNutrition",
+        verbose_name="Спортивное питание",
+        on_delete=models.SET_NULL,
+        related_name="subscribers",
+        related_query_name="subscriber_set",
+        null=True,
+        blank=True
+    )
 
     def __str__(self):
         return str(self.telegram_user)
@@ -163,6 +172,22 @@ class Subscriber(models.Model):
         verbose_name_plural = "Подписчики"
 
 
+class TrainingProgramGroup(models.Model):
+    name = models.CharField(verbose_name="Название", max_length=64)
+    description = models.TextField(verbose_name="Описание", null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name}"
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """
+        Meta data
+        """
+
+        verbose_name = "Тренировочная группа"
+        verbose_name_plural = "Тренировочные группы"
+
+
 class TrainingProgram(models.Model):
     """
     Training program model
@@ -180,13 +205,14 @@ class TrainingProgram(models.Model):
         related_query_name="training_program_set",
         related_name="training_programs",
     )
-    sport_nutrition = models.ForeignKey(
-        "SportNutrition",
-        verbose_name="Спортивные добавки",
+    group = models.ForeignKey(
+        TrainingProgramGroup,
+        verbose_name="Тип тренировочной программы",
         related_name="training_programs",
         related_query_name="training_program_set",
         on_delete=models.CASCADE,
         null=True,
+        blank=True
     )
 
     def __str__(self):
@@ -355,7 +381,10 @@ class SportNutrition(models.Model):
     dosages = models.CharField(verbose_name="Дозировки", max_length=100)
     use = models.CharField(verbose_name="Способ применения", max_length=100)
     contraindications = models.CharField(
-        verbose_name="Противопоказания", max_length=100
+        verbose_name="Противопоказания",
+        max_length=100,
+        null=True,
+        blank=True
     )
 
     def __str__(self):

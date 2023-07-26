@@ -7,7 +7,6 @@ from drf_yasg import openapi
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from app.views import (
-    AuthToken,
     UserApi,
     SubscriberApi,
     ProgramApi,
@@ -27,10 +26,10 @@ api_routes = [
     path("nutrition/<int:nutrition_id>", NutritionApi.as_view(), name="nutrition"),
     path("training/<int:training_id>", TrainingApi.as_view(), name="training"),
     path("exercise/<int:exercise_id>", ExerciseApi.as_view(), name="exercise"),
-    path("program/list", ProgramListApi.as_view({'get': 'list'})),
-    path("nutrition/list", NutritionListApi.as_view({'get': 'list'})),
-    path("training/list", TrainingListApi.as_view({'get': 'list'})),
-    path("exercise/list", ExerciseListApi.as_view({'get': 'list'}))
+    path("program/list", ProgramListApi.as_view({'get': 'list'}), name="program-list"),
+    path("nutrition/list", NutritionListApi.as_view({'get': 'list'}), name="nutrition-list"),
+    path("training/list", TrainingListApi.as_view({'get': 'list'}), name="training-list"),
+    path("exercise/list", ExerciseListApi.as_view({'get': 'list'}), name="exercise-list")
 ]
 
 
