@@ -380,9 +380,8 @@ class SportNutrition(models.Model):
     description = models.TextField(verbose_name="Описание")
     dosages = models.TextField(verbose_name="Дозировки")
     use = models.TextField(verbose_name="Способ применения")
-    contraindications = models.CharField(
+    contraindications = models.TextField(
         verbose_name="Противопоказания",
-        max_length=100,
         null=True,
         blank=True
     )
