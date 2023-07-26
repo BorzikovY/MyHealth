@@ -19,5 +19,5 @@ class AppConfig(AppConfig):  # pylint: disable=function-redefined
         )
 
         for model in [TrainingProgram, Exercise]:
-            pre_delete.connect(signals.remove_file, sender=model)
-            pre_save.connect(signals.remove_file, sender=model)
+            pre_delete.connect(signals.delete_media, sender=model)
+            pre_save.connect(signals.update_media, sender=model)
