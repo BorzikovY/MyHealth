@@ -2,12 +2,16 @@
 from typing import Dict
 
 from rest_framework import generics, viewsets
-from rest_framework.authtoken.models import Token
-from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ModelSerializer
 
-from rest_framework.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST
+from rest_framework.status import (
+    HTTP_204_NO_CONTENT,
+    HTTP_400_BAD_REQUEST,
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_205_RESET_CONTENT
+)
 from rest_framework.response import Response
 
 from app.filters import (
@@ -21,13 +25,13 @@ from app.filters import (
 from app.models import TrainingProgram, SportNutrition, Training, Exercise
 from app.permissions import (
     UnauthenticatedPost,
+    AuthenticatedPost,
     SubscribePermission,
     UnauthenticatedGet,
     GroupPermission
 )
 from app.serializers import (
     UserSerializer,
-    UserLoginSerializer,
     SubscriberSerializer,
     UserUpdateSerializer,
     ProgramSerializer,
@@ -35,28 +39,6 @@ from app.serializers import (
     TrainingSerializer,
     ExerciseSerializer
 )
-
-
-class AuthToken(ObtainAuthToken):
-    """
-    Obtain token view
-    """
-
-    serializer_class = UserLoginSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data, context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data["user"]
-        (
-            token,
-            created,  # pylint: disable=unused-variable
-        ) = Token.objects.get_or_create(  # pylint: disable=no-member
-            user=user
-        )
-        return Response({"Authorization": f"Token {token.key}"})
 
 
 class RestApi(type):
@@ -107,20 +89,20 @@ class RestApi(type):
             self, request, **kwargs
     ):  # pylint: disable=unused-argument, bad-mcs-method-argument
         serializer = self.get_serializer(**kwargs)
-        return Response(serializer.data)
+        return Response(serializer.data, status=HTTP_200_OK)
 
     def post(self, request, **kwargs):  # pylint: disable=bad-mcs-method-argument
         serializer = self.get_serializer(data=request.data, **kwargs)
         if serializer.is_valid(raise_exception=True):
             serializer.create(serializer.validated_data)
-            return Response(serializer.data)
+            return Response(serializer.data, status=HTTP_201_CREATED)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
     def put(self, request, **kwargs):  # pylint: disable=bad-mcs-method-argument
         serializer = self.get_serializer(data=request.data, **kwargs)
         if serializer.is_valid(raise_exception=True):
             serializer.update(serializer.instance, serializer.validated_data)
-            return Response(serializer.data)
+            return Response(serializer.data, status=HTTP_205_RESET_CONTENT)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
     def delete(
@@ -160,7 +142,7 @@ class SubscriberApi(generics.GenericAPIView, metaclass=RestApi):
 
     __methods__ = ["get", "post", "put", "delete"]
     serializer_class = SubscriberSerializer
-    permission_classes = (SubscribePermission | UnauthenticatedPost,)
+    permission_classes = (SubscribePermission | AuthenticatedPost,)
 
 
 class ProgramApi(generics.GenericAPIView, metaclass=RestApi):
@@ -168,7 +150,7 @@ class ProgramApi(generics.GenericAPIView, metaclass=RestApi):
     Program api
     """
 
-    __methods__ = ["get", "post"]
+    __methods__ = ["get"]
     serializer_class = ProgramSerializer
     permission_classes = (SubscribePermission | UnauthenticatedGet,)
 
@@ -239,7 +221,6 @@ class NutritionListApi(viewsets.ModelViewSet):
     queryset = SportNutrition.objects.all()
 
     def filter_queryset(self, queryset):
-        program_id = self.request.query_params.get('program_id')
         first_filter = DataFilter.filter(
             self.request.query_params.get('dosages'),
             data_class=str
@@ -258,9 +239,7 @@ class NutritionListApi(viewsets.ModelViewSet):
             first_filter(note.dosages)
             and second_filter(note.use)
             and third_filter(note.contraindications),
-            SportNutrition.objects.filter(
-                training_program_set=TrainingProgram.objects.filter(id=program_id)[:1]
-            )
+            SportNutrition.objects.all()
         )
 
         return queryset

@@ -163,6 +163,22 @@ class Subscriber(models.Model):
         verbose_name_plural = "Подписчики"
 
 
+class TrainingProgramGroup(models.Model):
+    name = models.CharField(verbose_name="Название", max_length=64)
+    description = models.TextField(verbose_name="Описание", null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name}"
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """
+        Meta data
+        """
+
+        verbose_name = "Тренировочная группа"
+        verbose_name_plural = "Тренировочные группы"
+
+
 class TrainingProgram(models.Model):
     """
     Training program model
@@ -180,13 +196,14 @@ class TrainingProgram(models.Model):
         related_query_name="training_program_set",
         related_name="training_programs",
     )
-    sport_nutrition = models.ForeignKey(
-        "SportNutrition",
-        verbose_name="Спортивные добавки",
+    group = models.ForeignKey(
+        TrainingProgramGroup,
+        verbose_name="Тип тренировочной программы",
         related_name="training_programs",
         related_query_name="training_program_set",
         on_delete=models.CASCADE,
         null=True,
+        blank=True
     )
 
     def __str__(self):
@@ -354,8 +371,10 @@ class SportNutrition(models.Model):
     description = models.TextField(verbose_name="Описание")
     dosages = models.TextField(verbose_name="Дозировки")
     use = models.TextField(verbose_name="Способ применения")
-    contraindications = models.CharField(
-        verbose_name="Противопоказания", max_length=100
+    contraindications = models.TextField(
+        verbose_name="Противопоказания",
+        null=True,
+        blank=True
     )
 
     def __str__(self):

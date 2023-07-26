@@ -20,6 +20,8 @@ class TelegramUserManager(BaseUserManager):
         )
         if not (telegram_id and chat_id):
             raise ValueError("You must specify both telegram_id and chat_id to proceed")
+        if extra_fields.get("balance"):
+            raise ValueError("You must not provide balance during user creation")
 
         id_query = queryset({"telegram_id": telegram_id})
         chat_query = queryset({"chat_id": self.model.encode_chat_id(chat_id)})

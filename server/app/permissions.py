@@ -40,6 +40,12 @@ class UnauthenticatedPost(BasePermission):
 
     def has_permission(self, request, view) -> bool:
         return request.method in ["POST"]
+    
+
+class AuthenticatedPost(BasePermission):
+
+    def has_permission(self, request, view) -> bool:
+        return request.method in ["POST"] and request.user.is_authenticated
 
 
 class UnauthenticatedGet(BasePermission):

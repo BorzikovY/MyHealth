@@ -11,7 +11,7 @@ class AppConfig(AppConfig):  # pylint: disable=function-redefined
     default_auto_field = "django.db.models.BigAutoField"
     name = "app"
 
-    def ready(self):
+    def ready(self) -> None:
         from app import signals  # pylint: disable=import-outside-toplevel
         from app.models import (  # pylint: disable=import-outside-toplevel
             TrainingProgram,
@@ -19,5 +19,5 @@ class AppConfig(AppConfig):  # pylint: disable=function-redefined
         )
 
         for model in [TrainingProgram, Exercise]:
-            pre_delete.connect(signals.remove_file, sender=model)
-            pre_save.connect(signals.remove_file, sender=model)
+            pre_delete.connect(signals.delete_media, sender=model)
+            pre_save.connect(signals.update_media, sender=model)

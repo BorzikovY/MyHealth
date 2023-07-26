@@ -10,5 +10,6 @@
 /server/media/*
 /server/logs/*
 
+/certbot/*
 /bot/.env
 /certbot/*
