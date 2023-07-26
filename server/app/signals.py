@@ -19,7 +19,10 @@ def update_media(sender, instance, **kwargs) -> None:  # pylint: disable=unused-
         files = filter(lambda field: hasattr(obj, field), ["image", "video"])
         for file in files:
             if getattr(obj, file) != getattr(instance, file):
-                remove_file(str(getattr(obj, file)))
+                try:
+                    remove_file(str(getattr(obj, file)))
+                except IsADirectoryError as error:
+                    pass
 
 
 def delete_media(sender, instance, **kwargs) -> None:  # pylint: disable=unused-argument
@@ -27,4 +30,7 @@ def delete_media(sender, instance, **kwargs) -> None:  # pylint: disable=unused-
         obj = sender.objects.get(id=instance.id)
         files = filter(lambda field: hasattr(obj, field), ["image", "video"])
         for file in files:
-            remove_file(str(getattr(obj, file)))
+            try:
+                remove_file(str(getattr(obj, file)))
+            except IsADirectoryError as error:
+                pass
