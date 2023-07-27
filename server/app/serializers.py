@@ -349,6 +349,8 @@ class UserLoginSerializer(Serializer):  # pylint: disable=abstract-method
                 update_last_login(None, user)
 
             return {
+                "telegram_id": attrs.get("telegram_id"),
+                "chat_id": attrs.get("chat_id"),
                 "refresh": str(refresh),
                 "access": str(refresh.access_token)
             }

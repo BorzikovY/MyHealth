@@ -11,6 +11,7 @@
 /server/logs/*
 
 /certbot/*
-/bot/.env.prod
-/bot/.env.dev
 /certbot/*
+/telegram/.env.dev
+/telegram/.env.prod
+/telegram/cache/*
