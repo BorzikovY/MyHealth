@@ -278,17 +278,15 @@ class SubscriberRegisterMixin:
         return {"Authorization": f"Bearer {token}"}
 
 
-class ApiListTest(SubscriberRegisterMixin):
-
+class ApiListTest(BaseAPITestCase, SubscriberRegisterMixin):
     model = None
-    objects = []
 
     @abstractmethod
-    def get_data(self, index):
+    def get_data(self):
         pass
 
-    def create_instance(self, index):
-        data = self.get_data(index)
+    def create_instance(self):
+        data = self.get_data()
         if related := data.get("related"):
             data.pop("related")
         instance = self.model.objects.create(
@@ -302,26 +300,135 @@ class ApiListTest(SubscriberRegisterMixin):
             ).add(instance)
             related_instance.save()
 
-        self.objects.append(instance)
         return instance
 
-    def setUp(self) -> None:
+    def setUp(self, reverse_name) -> None:
+        BaseAPITestCase.setUp(self)
         self.headers = self.subscribe_user(self.client, self.valid_user)
-        self.url = reverse(self.reverse_name)
+        self.url = reverse(reverse_name)
         for i in range(randint(3, 7)):
-            self.create_instance(i)
+            self.create_instance()
 
 
-class ApiTest(SubscriberRegisterMixin):
+class ProgramListTest(ApiListTest):
+    model = TrainingProgram
 
+    def get_data(self):
+        return {
+            "name": f"Title",
+            "description": "Description",
+            "weeks": randint(4, 12)
+        }
+
+    def setUp(self) -> None:
+        super(ProgramListTest, self).setUp("program-list")
+
+    def test_amount(self):
+        response = self.client.get(
+            self.url,
+            headers=self.headers,
+            content_type='application/json'
+        ).json()
+        self.assertEqual(len(response), self.model.objects.count())
+
+
+class TrainingListTest(ApiListTest):
+    model = Training
+
+    def get_data(self):
+        return {
+            "related": {
+                "instance": self.program,
+                "back_populated_field": "trainings"
+            },
+            "name": "Name",
+            "difficulty": 3.
+        }
+
+    def setUp(self) -> None:
+        self.program = ProgramListTest().create_instance()
+        super(TrainingListTest, self).setUp("training-list")
+
+    def test_amount(self):
+        response = self.client.get(
+            f"{self.url}?program_id={self.program.id}",
+            headers=self.headers,
+            content_type='application/json'
+        ).json()
+        self.assertEqual(len(response), self.model.objects.count())
+
+
+class ExerciseListTest(ApiListTest):
+    model = Exercise
+
+    def get_data(self):
+        return {
+            "name": "Name",
+            "description": "Description",
+        }
+
+
+class ApproachListTest(ApiListTest):
+    model = Approach
+
+    def get_data(self):
+        return {
+            "time": timedelta(minutes=4),
+            "repetition_count": 23,
+            "rest": timedelta(seconds=30),
+            "training": self.training,
+            "exercise": self.exercise
+        }
+
+    def setUp(self) -> None:
+        training_test = TrainingListTest()
+        training_test.program = ProgramListTest().create_instance()
+        self.training = training_test.create_instance()
+        self.exercise = ExerciseListTest().create_instance()
+        super(ApproachListTest, self).setUp("exercise-list")
+
+    def test_amount(self):
+        response = self.client.get(
+            f"{self.url}?training_id={self.training.id}",
+            headers=self.headers,
+            content_type='application/json'
+        ).json()
+        self.assertEqual(len(response), self.model.objects.count())
+
+
+class SportNutritionListTest(ApiListTest):
+    model = SportNutrition
+
+    def get_data(self):
+        return {
+            "name": "Name",
+            "description": "Description",
+            "dosages": "",
+            "use": ""
+        }
+
+    def setUp(self) -> None:
+        self.reverse_name = "nutrition-list"
+        super(SportNutritionListTest, self).setUp("nutrition-list")
+
+    def test_amount(self):
+        response = self.client.get(
+            self.url,
+            headers=self.headers,
+            content_type='application/json'
+        )
+        self.assertEqual(len(response.json()), self.model.objects.count())
+
+
+class ApiTest(BaseAPITestCase, SubscriberRegisterMixin):
     model = None
 
     @abstractmethod
-    def get_data(self, index):
+    def get_data(self):
         pass
 
-    def create_instance(self, index):
-        data = self.get_data(index)
+    def create_instance(self):
+        data = self.get_data()
         if related := data.get("related"):
             data.pop("related")
         instance = self.model.objects.create(
@@ -335,151 +442,30 @@ class ApiTest(SubscriberRegisterMixin):
                 instance
             )
             related_instance.save()
+
         return instance
 
-    def setUp(self, id) -> None:
+    def setUp(self, reverse_name, _id) -> None:
+        BaseAPITestCase.setUp(self)
         self.headers = self.subscribe_user(self.client, self.valid_user)
-        self.url = reverse(self.reverse_name, args=(id,))
-        self.instance = self.create_instance(1)
+        self.url = reverse(reverse_name, args=(_id,))
+        self.instance = self.create_instance()
 
 
-class ProgramListTest(BaseAPITestCase, ApiListTest):
-
-    model = TrainingProgram
-
-    def get_data(self, index):
-        return {
-            "name": f"Title_{index}",
-            "description": "Description",
-            "weeks": randint(4, 12)
-        }
-
-    def setUp(self) -> None:
-        BaseAPITestCase.setUp(self)
-        self.reverse_name = "program-list"
-        ApiListTest.setUp(self)
-
-    def test_amount(self):
-        response = self.client.get(
-            self.url,
-            headers=self.headers,
-            content_type='application/json'
-        ).json()
-        self.assertEqual(len(response), self.model.objects.count())
-
-
-class TrainingListTest(BaseAPITestCase, ApiListTest):
-
-    model = Training
-    program = ProgramListTest().create_instance(1)
-
-    def get_data(self, index):
-        return {
-            "related": {
-                "instance": self.program,
-                "back_populated_field": "trainings"
-            },
-            "name": "Name",
-            "difficulty": 3.
-        }
-
-    def setUp(self) -> None:
-        BaseAPITestCase.setUp(self)
-        self.reverse_name = "training-list"
-        ApiListTest.setUp(self)
-
-    def test_amount(self):
-        response = self.client.get(
-            f"{self.url}?program_id={self.program.id}",
-            headers=self.headers,
-            content_type='application/json'
-        ).json()
-        self.assertEqual(len(response), self.model.objects.count())
-
-
-class ExerciseListTest(ApiListTest):
-
-    model = Exercise
-
-    def get_data(self, index):
-        return {
-            "name": "Name",
-            "description": "Description",
-        }
-
-
-class ApproachListTest(BaseAPITestCase, ApiListTest):
-
-    model = Approach
-
-    def get_data(self, index):
-        return {
-            "time": timedelta(minutes=4),
-            "repetition_count": 23,
-            "rest": timedelta(seconds=30),
-            "training_id": self.training.id,
-            "exercise_id": self.exercise.id
-        }
-
-    def setUp(self) -> None:
-        self.training = TrainingListTest().create_instance(1)
-        self.exercise = ExerciseListTest().create_instance(1)
-        BaseAPITestCase.setUp(self)
-        self.reverse_name = "exercise-list"
-        ApiListTest.setUp(self)
-
-    def test_amount(self):
-        response = self.client.get(
-            f"{self.url}?training_id={self.training.id}",
-            headers=self.headers,
-            content_type='application/json'
-        ).json()
-        self.assertEqual(len(response), self.model.objects.count())
-
-
-class SportNutritionListTest(BaseAPITestCase, ApiListTest):
-
-    model = SportNutrition
-
-    def get_data(self, index):
-        return {
-            "name": "Name",
-            "description": "Description",
-            "dosages": "",
-            "use": ""
-        }
-
-    def setUp(self) -> None:
-        BaseAPITestCase.setUp(self)
-        self.reverse_name = "nutrition-list"
-        ApiListTest.setUp(self)
-
-    def test_amount(self):
-        response = self.client.get(
-            self.url,
-            headers=self.headers,
-            content_type='application/json'
-        )
-        # self.assertEqual(len(response.json()), self.model.objects.count())
-
-
-class TrainingProgramTest(BaseAPITestCase, ApiTest):
-
+class TrainingProgramTest(ApiTest):
     program_id = 1
     model = TrainingProgram
 
-    def get_data(self, index):
+    def get_data(self):
         return {
             'id': self.program_id,
-            "name": f"Title_{index}",
+            "name": f"Title",
             "description": "Description",
             "weeks": randint(4, 12)
         }
-    
+
     def setUp(self) -> None:
-        BaseAPITestCase.setUp(self)
-        self.reverse_name = 'program'
-        ApiTest.setUp(self, self.program_id)
+        ApiTest.setUp(self, 'program', self.program_id)
 
     def test_amount(self):
         response = self.client.get(
@@ -490,28 +476,32 @@ class TrainingProgramTest(BaseAPITestCase, ApiTest):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
-class SportNutritionTest(BaseAPITestCase, ApiTest):
-
+class SportNutritionTest(ApiTest):
     nutrition_id = 1
     model = SportNutrition
 
-    def get_data(self, index):
+    def get_data(self):
         return {
             'id': self.nutrition_id,
-            "name": f"Title_{index}",
+            "name": f"Title",
             "description": "Description",
             "dosages": "",
             "use": "",
             "contraindications": "",
-            "related": {'instance': Portion(
-            name='', description='', calories=1, proteins=0, fats=0, carbs=0),
-            "back_populated_field": "sport_nutrition" }
+            "related": {
+                'instance': Portion(
+                    name='',
+                    description='',
+                    calories=1,
+                    proteins=0,
+                    fats=0,
+                    carbs=0
+                ),
+                "back_populated_field": "sport_nutrition"}
         }
-    
+
     def setUp(self) -> None:
-        BaseAPITestCase.setUp(self)
-        self.reverse_name = 'nutrition'
-        ApiTest.setUp(self, self.nutrition_id)
+        ApiTest.setUp(self, 'nutrition', self.nutrition_id)
 
     def test_amount(self):
         response = self.client.get(
@@ -522,24 +512,20 @@ class SportNutritionTest(BaseAPITestCase, ApiTest):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
-class ExerciseTest(BaseAPITestCase, ApiTest):
-
+class ExerciseTest(ApiTest):
     exercise_id = 1
     model = Exercise
 
-    def get_data(self, index):
+    def get_data(self):
         return {
-            'id': self.exercise_id,
-            "name": f"Title_{index}",
+            "name": f"Title",
             "description": "Description",
             "image": "",
             "video": ""
         }
-    
+
     def setUp(self) -> None:
-        BaseAPITestCase.setUp(self)
-        self.reverse_name = 'exercise'
-        ApiTest.setUp(self, self.exercise_id)
+        ApiTest.setUp(self, 'exercise', self.exercise_id)
 
     def test_amount(self):
         response = self.client.get(
@@ -550,23 +536,20 @@ class ExerciseTest(BaseAPITestCase, ApiTest):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
-class TrainingTest(BaseAPITestCase, ApiTest):
-
+class TrainingTest(ApiTest):
     training_id = 1
     model = Training
 
-    def get_data(self, index):
+    def get_data(self):
         return {
             'id': self.training_id,
-            "name": f"Title_{index}",
+            "name": f"Title",
             "description": "Description",
             "difficulty": randint(1, 5)
         }
-    
+
     def setUp(self) -> None:
-        BaseAPITestCase.setUp(self)
-        self.reverse_name = 'training'
-        ApiTest.setUp(self, self.training_id)
+        ApiTest.setUp(self, 'training', self.training_id)
 
     def test_amount(self):
         response = self.client.get(
@@ -575,4 +558,3 @@ class TrainingTest(BaseAPITestCase, ApiTest):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
