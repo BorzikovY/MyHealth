@@ -11,5 +11,6 @@
 /server/logs/*
 
 /certbot/*
-/bot/.env
+/bot/.env.prod
+/bot/.env.dev
 /certbot/*
