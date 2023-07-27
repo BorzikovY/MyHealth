@@ -15,3 +15,4 @@
 /telegram/.env.dev
 /telegram/.env.prod
 /telegram/cache/*
+/telegram/__pycache__/*
