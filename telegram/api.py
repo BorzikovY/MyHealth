@@ -150,10 +150,13 @@ class ApiClient:
                     raise jwt.exceptions.ExpiredSignatureError("Token is expired")
                 return await coro(self, user, token, cache)
             except jwt.exceptions.ExpiredSignatureError:
-                new_token = await self.get_token(
+                token = await self.get_token(
                     TelegramUser(**user.post_data()), False
                 )
-                return await coro(self, user, new_token, cache)
+            finally:
+                if isinstance(token, Token):
+                    return await coro(self, user, token, cache)
+                return token
         return wrapper
 
     async def clear_cache(self, dispatcher):
