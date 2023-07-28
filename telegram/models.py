@@ -6,14 +6,10 @@ from typing import List
 from settings import config
 
 
-def cached(kwargs):
-    for item in kwargs.get("data_list", []):
-        for attr, value in item.items():
-            if not kwargs.get(attr) == value:
-                break
-        else:
+def cached(data_list, attr, value):
+    for item in data_list:
+        if item.get(attr) == value:
             return item
-    return kwargs
 
 
 @dataclass
@@ -52,9 +48,13 @@ class Subscriber:
 class Token:
 
     def __init__(self, **kwargs):
-        data = cached(kwargs)
-        if data.get("data_list"):
-            data.pop("data_list")
+        if data := kwargs.get("data_list", None):
+            data = cached(
+                kwargs.pop("data_list"),
+                "telegram_id",
+                kwargs.get("telegram_id")
+            )
+        data = kwargs if data is None else data
         for attr, value in data.items():
             setattr(self, attr, value)
 
@@ -76,9 +76,13 @@ class Token:
 @dataclass(init=False)
 class TelegramUser:
     def __init__(self, **kwargs):
-        data = cached(kwargs)
-        if data.get("data_list"):
-            data.pop("data_list")
+        if data := kwargs.get("data_list", None):
+            data = cached(
+                kwargs.pop("data_list"),
+                "telegram_id",
+                kwargs.get("telegram_id")
+            )
+        data = data if data else kwargs
         for attr, value in data.items():
             setattr(self, attr, value)
 

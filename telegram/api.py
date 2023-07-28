@@ -8,6 +8,7 @@ from aiohttp import ClientSession
 from models import TelegramUser, Token
 
 user_lock = asyncio.Lock()
+token_lock = asyncio.Lock()
 
 
 class IOHandler:
@@ -56,31 +57,33 @@ class JsonCacheHandler(BaseCacheHandler):
         return "{}"
 
     @staticmethod
-    def from_json(data):
+    def from_json(data) -> dict:
         if data:
             return json.loads(data)
         return {}
 
     async def get_user(self, data: dict) -> TelegramUser:
-        users = json.loads(await self.users.get())
+        async with user_lock:
+            users = json.loads(await self.users.get())
         data["data_list"] = users
         user = TelegramUser(**data)
         return user
 
     async def get_token(self, data: dict) -> Token:
-        tokens = json.loads(await self.tokens.get())
+        async with token_lock:
+            tokens = json.loads(await self.tokens.get())
         data["data_list"] = tokens
-        token = Token(tokens, **data)
+        token = Token(**data)
         return token
 
-    async def update_tokens(self, new: str):
+    async def update_tokens(self, new: str) -> None:
         received = self.from_json(new)
         data = self.from_json(await self.tokens.get())
         formatted_data = self.to_json(data + [received])
-        async with user_lock:
+        async with token_lock:
             await self.tokens.post(formatted_data)
 
-    async def update_users(self, new: str):
+    async def update_users(self, new: str) -> None:
         received = self.from_json(new)
         data = self.from_json(await self.users.get())
         formatted_data = self.to_json(data + [received])
