@@ -13,7 +13,7 @@ dp = Dispatcher(tg)
 
 
 async def auth_user(registered_user: TelegramUser):
-    asyncio.create_task(client.get_new_token(registered_user))
+    asyncio.create_task(client.get_token(registered_user))
     return registered_user
 
 
@@ -34,7 +34,7 @@ def create_anonymous_user(msg) -> TelegramUser:
 @dp.message_handler(commands=["start"])
 async def send_welcome(message: types.Message):
 
-    instance = create_anonymous_user(message)
+    instance: TelegramUser = create_anonymous_user(message)
     await register_user(instance)
     msg: str = "Привет 👋️ Я спорт-бот, и я помогу тебе подобрать\n" \
                "программу под твои интересы и физическую подготовку\n\n" \
@@ -46,12 +46,16 @@ async def send_welcome(message: types.Message):
 @dp.message_handler(commands=["account"])
 async def get_account_info(message: types.Message):
 
-    token: Token = await client.get_new_token(create_anonymous_user(message))
-    instance: TelegramUser = await client.get_user(token)
-    msg: str = f"Твои данные:\n\n" \
-               f"Имя: {instance.first_name}\n" \
-               f"Фамилия: {instance.last_name}\n" \
-               f"Баланс: {instance.balance}"
+    instance: TelegramUser = create_anonymous_user(message)
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        user: TelegramUser = await client.get_user(instance, token)
+        msg: str = f"Твои данные:\n\n" \
+                   f"Имя: {user.first_name}\n" \
+                   f"Фамилия: {user.last_name}\n" \
+                   f"Баланс: {user.balance}"
+    else:
+        msg = "Введите /start, чтобы начать..."
 
     await message.reply(msg)
 
