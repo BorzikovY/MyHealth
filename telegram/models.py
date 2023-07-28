@@ -7,6 +7,37 @@ from settings import config, SECRET_KEY
 
 
 @dataclass
+class Portion:
+    id: int
+    name: str
+    description: str
+    calories: int
+    proteins: float
+    fats: float
+    carbs: float
+
+
+@dataclass
+class Nutrition:
+    id: int
+    name: str
+    description: str
+    dosages: str
+    use: str
+    contraindications: str
+    portions: List[Portion]
+
+
+@dataclass
+class Exercise:
+    id: int
+    name: str
+    description: str
+    image: str
+    video: str
+
+
+@dataclass
 class TrainingProgramGroup:
     name: str
     description: str
@@ -14,7 +45,12 @@ class TrainingProgramGroup:
 
 @dataclass
 class Training:
-    pass
+    id: str
+    name: str
+    description: str
+    difficulty: int
+    time: str
+    appoarch_count: str
 
 
 @dataclass
