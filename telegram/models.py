@@ -34,8 +34,8 @@ class Subscriber:
     height: float
     weight: float
     training_program: TrainingProgram
-    sport_nutrition: any
     gender: str = 'helicopter'
+    is_adult: bool = False
 
 
 @dataclass

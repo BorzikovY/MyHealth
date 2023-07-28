@@ -1,7 +1,7 @@
 import asyncio
 
 from api import ApiClient
-from models import TelegramUser, Token
+from models import TelegramUser, Token, Subscriber
 from settings import config
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -54,6 +54,20 @@ async def get_account_info(message: types.Message):
                    f"Имя: {user.first_name}\n" \
                    f"Фамилия: {user.last_name}\n" \
                    f"Баланс: {user.balance}"
+    else:
+        msg = "Введите /start, чтобы начать..."
+
+    await message.reply(msg)
+
+
+@dp.message_handler(commands=["subscribe"])
+async def subscribe(message: types.Message):
+
+    instance: TelegramUser = create_anonymous_user(message)
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        subscriber: Subscriber = await client.create_subscriber(instance, token)
+        msg: str = f"Создание аккаунта {subscriber.id}"
     else:
         msg = "Введите /start, чтобы начать..."
 

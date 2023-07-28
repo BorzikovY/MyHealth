@@ -7,7 +7,7 @@ import jwt
 import aiofiles
 from aiohttp import ClientSession
 
-from models import TelegramUser, Token
+from models import TelegramUser, Token, Subscriber
 from settings import config, SECRET_KEY
 
 
@@ -52,13 +52,15 @@ class BaseCacheHandler:
 class JsonCacheHandler(BaseCacheHandler):
     files = {
         "users": "users/{file}",
-        "tokens": "tokens/{file}"
+        "tokens": "tokens/{file}",
+        "subscribers": "subscribers/{file}"
     }
 
     def __init__(self):
         super().__init__()
         self.user_lock = asyncio.Lock()
         self.token_lock = asyncio.Lock()
+        self.subscriber_lock = asyncio.Lock()
 
     @staticmethod
     def to_json(data) -> str:
@@ -87,6 +89,14 @@ class JsonCacheHandler(BaseCacheHandler):
             ))
         if token:
             return Token(**token)
+        
+    async def get_subscriber(self, data: dict) -> Subscriber:
+        async with self.subscriber_lock:
+            subscriber = json.loads(await self.subscribers.get(
+                data.get("telegram_id")
+            ))
+        if subscriber:
+            return Subscriber(**subscriber)
 
     async def update_tokens(self, received: str, _id: str) -> None:
         formatted_data = json.loads(received)
@@ -101,6 +111,11 @@ class JsonCacheHandler(BaseCacheHandler):
         formatted_data = json.loads(received)
         async with self.user_lock:
             await self.users.post(received, formatted_data.get(_id))
+
+    async def update_subscribers(self, received: str, _id: str) -> None:
+        formatted_data = json.loads(received)
+        async with self.subscriber_lock:
+            await self.subscribers.post(received, formatted_data.get(_id))
 
 
 class ApiClient:
@@ -220,3 +235,19 @@ class ApiClient:
             "telegram_id",
             self.handler.update_users
         )
+    
+    @check_token
+    async def create_subscriber(self, user: TelegramUser, token: Token, cache=True) -> Subscriber:
+        url = f"{self.base_url}/api/subscribe/"
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "post",
+            201,
+            Subscriber,
+            "id",
+            self.handler.update_subscribers,
+            data=json.dumps(token.post_data())
+        )
+
