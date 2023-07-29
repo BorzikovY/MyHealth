@@ -7,8 +7,10 @@ import jwt
 import aiofiles
 from aiohttp import ClientSession
 
-from models import TelegramUser, Token, Subscriber
-from settings import config, SECRET_KEY
+from models import TelegramUser, Token, TrainingProgram, Subscriber
+from settings import SECRET_KEY, HOST
+
+program_lock = asyncio.Lock()
 
 
 class IOHandler:
@@ -21,7 +23,7 @@ class IOHandler:
         return value.encode("utf-8")
 
     async def post(self, data: bytes | str, name: str):
-        path = self.path.format(file=f"{name}.json")
+        path = self.path.format(file=f"{name}")
         directory = self.path.format(file="")
         if not os.path.exists(directory):
             os.mkdir(directory)
@@ -30,12 +32,20 @@ class IOHandler:
             await file.write(data)
 
     async def get(self, name: str):
-        path = self.path.format(file=f"{name}.json")
+        path = self.path.format(file=f"{name}")
         if os.path.exists(path):
             async with aiofiles.open(path, "rb+") as file:
                 data = await file.read()
                 return data.decode()
         return "{}"
+
+    async def get_all(self):
+        tasks = []
+        if not os.path.exists(self.path.format(file="")):
+            return []
+        for name in os.listdir(self.path.format(file="")):
+            tasks.append(self.get(name))
+        return await asyncio.gather(*tasks)
 
 
 class BaseCacheHandler:
@@ -53,8 +63,10 @@ class JsonCacheHandler(BaseCacheHandler):
     files = {
         "users": "users/{file}",
         "tokens": "tokens/{file}",
-        "subscribers": "subscribers/{file}"
+        "subscribers": "subscribers/{file}",
+        "programs": "programs/{file}"
     }
+    ext = "json"
 
     def __init__(self):
         super().__init__()
@@ -74,10 +86,16 @@ class JsonCacheHandler(BaseCacheHandler):
             return json.loads(data)
         return {}
 
+    async def get_programs(self, data: dict) -> list[TrainingProgram]:
+        async with program_lock:
+            programs = [json.loads(content) for content in await self.programs.get_all()]
+        if programs:
+            return [TrainingProgram(**program) for program in programs]
+
     async def get_user(self, data: dict) -> TelegramUser:
         async with self.user_lock:
             user = json.loads(await self.users.get(
-                data.get("telegram_id")
+                f"{data.get('telegram_id')}.{self.ext}"
             ))
         if user:
             return TelegramUser(**user)
@@ -85,46 +103,54 @@ class JsonCacheHandler(BaseCacheHandler):
     async def get_token(self, data: dict) -> Token:
         async with self.token_lock:
             token = json.loads(await self.tokens.get(
-                data.get("telegram_id")
+                f"{data.get('telegram_id')}.{self.ext}"
             ))
         if token:
             return Token(**token)
-        
+
     async def get_subscriber(self, data: dict) -> Subscriber:
         async with self.subscriber_lock:
             subscriber = json.loads(await self.subscribers.get(
-                data.get("telegram_id")
+                f"{data.get('telegram_id')}.{self.ext}"
             ))
         if subscriber:
             return Subscriber(**subscriber)
 
-    async def update_tokens(self, received: str, _id: str) -> None:
+    async def update_programs(self, received: str, _id: str):
+        formatted_data = json.loads(received)
+        async with program_lock:
+            tasks = []
+            for data in formatted_data:
+                tasks.append(self.programs.post(json.dumps(data), f"{data.get(_id)}.{self.ext}"))
+            await asyncio.gather(*tasks)
+
+    async def update_token(self, received: str, _id: str) -> None:
         formatted_data = json.loads(received)
         payload = jwt.decode(
             formatted_data.get("access"),
             SECRET_KEY, algorithms=["HS256"]
         )
         async with self.token_lock:
-            await self.tokens.post(received, payload.get(_id))
+            await self.tokens.post(received, f"{payload.get(_id)}.{self.ext}")
 
-    async def update_users(self, received: str, _id: str) -> None:
+    async def update_user(self, received: str, _id: str) -> None:
         formatted_data = json.loads(received)
         async with self.user_lock:
-            await self.users.post(received, formatted_data.get(_id))
+            await self.users.post(received, f"{formatted_data.get(_id)}.{self.ext}")
 
-    async def update_subscribers(self, received: str, _id: str) -> None:
+    async def update_subscriber(self, received: str, _id: str) -> None:
         formatted_data = json.loads(received)
         async with self.subscriber_lock:
-            await self.subscribers.post(received, formatted_data.get(_id))
+            await self.subscribers.post(received, f"{formatted_data.get(_id)}.{self.ext}")
 
 
 class ApiClient:
 
     cache_class = JsonCacheHandler
 
-    def __init__(self, base_url):
+    def __init__(self):
         self.handler = self.cache_class()
-        self.base_url = base_url
+        self.base_url = HOST
 
     @staticmethod
     def get_headers(data: dict = None):
@@ -149,7 +175,10 @@ class ApiClient:
                 asyncio.create_task(
                     cache_function(content, _id_field)
                 )
-                return model(**self.handler.from_json(content))
+                output = self.handler.from_json(content)
+                if isinstance(output, list):
+                    return [model(**data) for data in output]
+                return model(**output)
         return self.handler.from_json(content)
 
     @staticmethod
@@ -198,7 +227,7 @@ class ApiClient:
             200,
             Token,
             "telegram_id",
-            self.handler.update_tokens,
+            self.handler.update_token,
             data=json.dumps(user.access_data())
         )
 
@@ -212,7 +241,7 @@ class ApiClient:
             201,
             TelegramUser,
             "telegram_id",
-            self.handler.update_users,
+            self.handler.update_user,
             data=json.dumps(user.post_data())
         )
 
@@ -233,9 +262,29 @@ class ApiClient:
             200,
             TelegramUser,
             "telegram_id",
-            self.handler.update_users
+            self.handler.update_user
         )
-    
+
+    @check_token
+    async def get_programs(self, user: TelegramUser, token: Token, cache=True) -> TrainingProgram:
+        url = f"{self.base_url}/api/program/list/"
+        if cache and not program_lock.locked():
+            programs = await self.get_cache(
+                {}, self.handler.get_programs
+            )
+            if programs is not None:
+                return programs
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "get",
+            200,
+            TrainingProgram,
+            "id",
+            self.handler.update_programs
+        )
+
     @check_token
     async def create_subscriber(self, user: TelegramUser, token: Token, cache=True) -> Subscriber:
         url = f"{self.base_url}/api/subscribe/"
@@ -247,7 +296,6 @@ class ApiClient:
             201,
             Subscriber,
             "id",
-            self.handler.update_subscribers,
+            self.handler.update_subscriber,
             data=json.dumps(token.post_data())
         )
-

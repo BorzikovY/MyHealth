@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import jwt
 
 from dataclasses import dataclass
@@ -55,12 +57,15 @@ class Training:
 
 @dataclass
 class TrainingProgram:
+    id: int
     name: str
     description: str
     image: str
     weeks: int
-    trainings: List[Training]
     group: TrainingProgramGroup
+    avg_training_time: timedelta
+    training_count: int
+    difficulty: float
 
 
 @dataclass

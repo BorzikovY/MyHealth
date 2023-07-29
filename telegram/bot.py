@@ -1,26 +1,25 @@
 import asyncio
 
 from api import ApiClient
-from models import TelegramUser, Token, Subscriber
+from models import TelegramUser, Token, TrainingProgram, Subscriber
 from settings import config
 
 from aiogram import Bot, Dispatcher, executor, types
 
 
 tg = Bot(token=config.get("bot_token"))
-client = ApiClient(config.get("host"))
 dp = Dispatcher(tg)
 
 
-async def auth_user(registered_user: TelegramUser):
+async def auth_user(client, registered_user: TelegramUser):
     asyncio.create_task(client.get_token(registered_user))
     return registered_user
 
 
-async def register_user(anonymous_user: TelegramUser):
+async def register_user(client, anonymous_user: TelegramUser):
     telegram_user = await client.create_user(anonymous_user)
     if isinstance(telegram_user, TelegramUser):
-        return await auth_user(telegram_user)
+        return await auth_user(client, telegram_user)
 
 
 def create_anonymous_user(msg) -> TelegramUser:
@@ -31,22 +30,59 @@ def create_anonymous_user(msg) -> TelegramUser:
     )
 
 
+def create_admin_user() -> TelegramUser:
+    return TelegramUser(
+        telegram_id="60025102bg",
+        chat_id="qwerty123"
+    )
+
+
+@dp.callback_query_handler(text="subscribe")
+async def subscribe_user(call: types.CallbackQuery):
+    await call.message.answer("Вы подписаны!")
+
+
+@dp.callback_query_handler(text="programs")
+async def subscribe_user(call: types.CallbackQuery):
+    client = ApiClient()
+    instance: TelegramUser = create_admin_user()
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        programs: list[TrainingProgram] = await client.get_programs(instance, token)
+        msg = "Список програм"
+        for program in programs:
+            msg += f"\n\n{program.name}:\n" \
+                   f"Описание: {program.description}"
+        await call.message.answer(msg if msg else "Контента нет(")
+    else:
+        await call.message.answer("Введите /start, чтобы начать...")
+
+
+start_keyboard = types.InlineKeyboardMarkup(2).add(
+    types.InlineKeyboardButton(text="Подписаться 🎁", callback_data="subscribe"),
+    types.InlineKeyboardButton(text="Я только посмотреть 😏️", callback_data="programs")
+)
+
+
 @dp.message_handler(commands=["start"])
 async def send_welcome(message: types.Message):
-
+    client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message)
-    await register_user(instance)
+
+    await register_user(client, instance)
     msg: str = "Привет 👋️ Я спорт-бот, и я помогу тебе подобрать\n" \
                "программу под твои интересы и физическую подготовку\n\n" \
                "Введите /subscribe, чтобы подписаться и продолжть просмотр."
 
-    await message.reply(msg)
+    await message.reply(msg, reply_markup=start_keyboard)
 
 
 @dp.message_handler(commands=["account"])
 async def get_account_info(message: types.Message):
-
+    client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message)
+
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
         user: TelegramUser = await client.get_user(instance, token)
@@ -62,7 +98,7 @@ async def get_account_info(message: types.Message):
 
 @dp.message_handler(commands=["subscribe"])
 async def subscribe(message: types.Message):
-
+    client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message)
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
@@ -75,4 +111,4 @@ async def subscribe(message: types.Message):
 
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True, on_shutdown=client.clear_cache)
+    executor.start_polling(dp, skip_updates=True, on_shutdown=ApiClient().clear_cache)
