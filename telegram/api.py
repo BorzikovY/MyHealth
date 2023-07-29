@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+from typing import List
 
 import jwt
 
@@ -9,8 +10,6 @@ from aiohttp import ClientSession
 
 from models import TelegramUser, Token, TrainingProgram, Subscriber, Nutrition, Training
 from settings import SECRET_KEY, HOST
-
-from typing import List
 
 program_lock = asyncio.Lock()
 nutrition_lock = asyncio.Lock()
@@ -96,7 +95,8 @@ class JsonCacheHandler(BaseCacheHandler):
         async with program_lock:
             programs = [json.loads(content) for content in await self.programs.get_all()]
         if programs:
-            return [TrainingProgram(**program) for program in programs]
+            instances = [TrainingProgram(**program).filter(**data) for program in programs]
+            return [instance for instance in instances if instance is not None]
         
     async def get_nutritions(self, data: dict) -> List[Nutrition]:
         async with nutrition_lock:
@@ -310,14 +310,22 @@ class ApiClient:
         )
 
     @check_token
-    async def get_programs(self, user: TelegramUser, token: Token, cache=True) -> TrainingProgram:
+    async def get_programs(
+            self,
+            user: TelegramUser,
+            token: Token,
+            data: dict | None,
+            cache=True) -> List[TrainingProgram]:
         url = f"{self.base_url}/api/program/list/"
         if cache and not program_lock.locked():
             programs = await self.get_cache(
-                {}, self.handler.get_programs
+                data, self.handler.get_programs
             )
             if programs is not None:
                 return programs
+        if data:
+            params = "&".join([f"{key}={value}" for key, value in data.items()])
+            url += f"?{params}"
         headers = self.get_headers(token.access_data())
         return await self.send_request(
             url,
@@ -328,7 +336,7 @@ class ApiClient:
             "id",
             self.handler.update_programs
         )
-    
+
     @check_token
     async def get_nutritions(self, user: TelegramUser, token: Token, cache=True) -> Nutrition:
         url = f"{self.base_url}/api/nutrition/list/"
@@ -397,7 +405,7 @@ class ApiClient:
             "id",
             self.handler.update_program
         )
-    
+
     @check_token
     async def get_nutrition(self, user: TelegramUser, token: Token, cache=True) -> Nutrition:
         url = f"{self.base_url}/api/nutrition/1/"

@@ -125,7 +125,6 @@ class UserSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin
     User model serializer
     """
 
-    subscriber = SubscriberSerializer(read_only=True)
     chat_id = CharField(required=True, write_only=True, max_length=128)
 
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called

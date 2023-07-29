@@ -1,11 +1,55 @@
 from datetime import timedelta
 
 import jwt
+import re
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Callable
 
+from messages import program_message, user_message
 from settings import config, SECRET_KEY
+
+
+class duration(timedelta):
+    def __new__(cls, string, **kwargs):
+        data = enumerate(reversed((string.split(":"))))
+        validated_data = map(lambda val: int(val[1]) * 60**val[0], data)
+        return super(duration, cls).__new__(cls, seconds=sum(validated_data))
+
+
+class DataFilter:
+
+    EXP_FORMAT = r"(?:[<>]=?|=)"
+    FILTER_EXP = {
+        "<": "__gt__",
+        "<=": "__ge__",
+        ">": "__lt__",
+        ">=": "__le__",
+        "=": "__eq__"
+    }
+    PATTERNS = {
+        float: r'([0-9]*[.])?[0-9]+',
+        int: r'[-]?[0-9]+',
+        duration: r'[0-9]+:[0-5][0-9]',
+        str: r'.*'
+    }
+
+    @classmethod
+    def filter(
+            cls, string: str | None, data_class
+    ) -> Callable:
+        if string is not None:
+            value_match, op_match = (
+                re.search(cls.PATTERNS[data_class], string),
+                re.search(cls.EXP_FORMAT, string)
+            )
+            if value_match and op_match:
+                op, value = (
+                    cls.FILTER_EXP[op_match.group(0)],
+                    data_class(value_match.group(0))
+                )
+                return getattr(value, op)
+        return lambda val: True
 
 
 @dataclass
@@ -57,6 +101,27 @@ class Training:
 
 @dataclass
 class TrainingProgram:
+
+    def __post_init__(self):
+        difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
+        group_name = self.group.name if self.group else "Общая подготовка"
+        avg_training_time = self.avg_training_time if self.avg_training_time else "-"
+        self.message = program_message.format(
+            name=self.name, group_name=group_name,
+            image="https://img2.goodfon.ru/original/1024x1024/c/e9/gym-man-woman-workout-fitness.jpg",
+            difficulty=self.difficulty,
+            difficulty_icon=difficulty_icon,
+            weeks=self.weeks,
+            training_count=self.training_count,
+            avg_training_time=avg_training_time,
+            description=self.description
+        )
+
+    def filter(self, data):
+        first_filter = DataFilter.filter(data.get("difficulty"), data_class=float)
+        second_filter = DataFilter.filter(data.get("weeks"), data_class=int)
+        return first_filter(self.difficulty) and second_filter(self.weeks)
+
     id: int
     name: str
     description: str
@@ -108,6 +173,13 @@ class Token:
 @dataclass
 class TelegramUser:
 
+    def __post_init__(self):
+        self.message = user_message.format(
+            first_name=self.first_name,
+            last_name=self.last_name,
+            balance=self.balance
+        )
+
     telegram_id: str
     id: int = None
     chat_id: str = config.get("chat_id")
@@ -116,7 +188,7 @@ class TelegramUser:
     first_name: str = ''
     last_name: str = ''
     balance: float = 0
-    subscriber: Subscriber = None
+    subscriber: int = None
 
     def access_data(self):
         return {

@@ -1,36 +1,49 @@
-import asyncio
-
 from api import ApiClient
 from models import TelegramUser, Token, TrainingProgram, Nutrition, Training
+from handlers import send_welcome, get_account_info, subscribe, get_programs, get_programs
+from states import (
+    program_filter_start,
+    get_difficulty_value,
+    get_difficulty_op,
+    get_weeks_value,
+    get_weeks_op,
+    finish_program_filter,
+    ProgramFilter,
+)
+from keyboards import create_filter_keyboard, del_filter, program_filter, week_filter, difficulty_filter
 from settings import config
 
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from typing import List
 
 tg = Bot(token=config.get("bot_token"))
-dp = Dispatcher(tg)
+storage = MemoryStorage()
+dp = Dispatcher(tg, storage=storage)
 
 
-async def auth_user(client, registered_user: TelegramUser):
-    asyncio.create_task(client.get_token(registered_user))
-    return registered_user
-
-
-async def register_user(client, anonymous_user: TelegramUser):
-    telegram_user = await client.create_user(anonymous_user)
-    if isinstance(telegram_user, TelegramUser):
-        return await auth_user(client, telegram_user)
-
-
-def create_anonymous_user(data) -> TelegramUser:
-    return TelegramUser(
-        telegram_id=str(data.id),
-        first_name=data.first_name,
-        last_name=data.last_name
+@dp.callback_query_handler(del_filter.filter())
+async def delete_messages(call: types.CallbackQuery, callback_data: dict):
+    current_id, messages = int(call.message.message_id) - 1, int(callback_data.get("messages"))
+    for _id in range(current_id, current_id-messages, -1):
+        await tg.delete_message(call.message.chat.id, _id)
+    await tg.delete_message(call.message.chat.id, current_id + 1)
+    await tg.send_message(
+        call.message.chat.id, "Список программ 🗒️",
+        reply_markup=create_filter_keyboard()
     )
 
 
+dp.register_message_handler(send_welcome, commands=["start"])
+dp.register_message_handler(get_account_info, commands=["account"])
+dp.register_callback_query_handler(subscribe, text="subscribe")
+dp.register_message_handler(get_programs, commands=["programs"])
+dp.register_callback_query_handler(program_filter_start, text="filter_programs"),
+dp.register_callback_query_handler(
+    get_difficulty_value,
+    program_filter.filter(),
+    state=ProgramFilter.difficulty_value
 def create_admin_user() -> TelegramUser:
     return TelegramUser(
         telegram_id=config.get("admin_telegram_id"),
@@ -151,37 +164,16 @@ start_keyboard = types.InlineKeyboardMarkup(4).add(
     types.InlineKeyboardButton(text="Первая тренировочная программа", callback_data="program"),
     types.InlineKeyboardButton(text="Первая спортивная добавка", callback_data="nutrition")
 )
-
-
-@dp.message_handler(commands=["start"])
-async def send_welcome(message: types.Message):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(message.from_user)
-
-    await register_user(client, instance)
-    msg: str = "Привет 👋️ Я спорт-бот, и я помогу тебе подобрать\n" \
-               "программу под твои интересы и физическую подготовку\n\n" \
-               "Введите /subscribe, чтобы подписаться и продолжть просмотр."
-
-    await message.reply(msg, reply_markup=start_keyboard)
-
-
-@dp.message_handler(commands=["account"])
-async def get_account_info(message: types.Message):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(message.from_user)
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        user: TelegramUser = await client.get_user(instance, token)
-        msg: str = f"Твои данные:\n\n" \
-                   f"Имя: {user.first_name}\n" \
-                   f"Фамилия: {user.last_name}\n" \
-                   f"Баланс: {user.balance}"
-    else:
-        msg = "Введите /start, чтобы начать..."
-
-    await message.reply(msg)
+dp.register_message_handler(get_difficulty_op, state=ProgramFilter.difficulty_op)
+dp.register_callback_query_handler(
+    get_weeks_value,
+    difficulty_filter.filter(),
+    state=ProgramFilter.weeks_value)
+dp.register_message_handler(get_weeks_op, state=ProgramFilter.weeks_op)
+dp.register_callback_query_handler(
+    finish_program_filter,
+    week_filter.filter(),
+    state=ProgramFilter.finish_filter)
 
 
 if __name__ == '__main__':
