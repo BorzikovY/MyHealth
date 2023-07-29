@@ -117,10 +117,12 @@ class TrainingProgram:
             description=self.description
         )
 
-    def filter(self, data):
-        first_filter = DataFilter.filter(data.get("difficulty"), data_class=float)
-        second_filter = DataFilter.filter(data.get("weeks"), data_class=int)
-        return first_filter(self.difficulty) and second_filter(self.weeks)
+    def filter(self, data: dict | None):
+        if data is not None:
+            first_filter = DataFilter.filter(data.get("difficulty"), data_class=float)
+            second_filter = DataFilter.filter(data.get("weeks"), data_class=int)
+            return first_filter(self.difficulty) and second_filter(self.weeks)
+        return True
 
     id: int
     name: str

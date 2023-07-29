@@ -9,7 +9,7 @@ import aiofiles
 from aiohttp import ClientSession
 
 from models import TelegramUser, Token, TrainingProgram, Subscriber, Nutrition, Training
-from settings import SECRET_KEY, HOST
+from settings import SECRET_KEY, HOST, ADMIN_TELEGRAM_ID, ADMIN_CHAT_ID
 
 program_lock = asyncio.Lock()
 nutrition_lock = asyncio.Lock()
@@ -95,15 +95,15 @@ class JsonCacheHandler(BaseCacheHandler):
         async with program_lock:
             programs = [json.loads(content) for content in await self.programs.get_all()]
         if programs:
-            instances = [TrainingProgram(**program).filter(**data) for program in programs]
-            return [instance for instance in instances if instance is not None]
-        
+            instances = [TrainingProgram(**program) for program in programs]
+            return [instance for instance in instances if instance.filter(data)]
+
     async def get_nutritions(self, data: dict) -> List[Nutrition]:
         async with nutrition_lock:
             nutritions = [json.loads(content) for content in await self.nutritions.get_all()]
         if nutritions:
             return [Nutrition(**nutrition) for nutrition in nutritions]
-        
+
     async def get_trainings(self, data: dict) -> List[Training]:
         async with training_lock:
             trainings = [json.loads(content) for content in await self.trainings.get_all()]
@@ -188,6 +188,32 @@ class JsonCacheHandler(BaseCacheHandler):
             await self.nutritions.post(received, f"{formatted_data.get(_id)}.{self.ext}")
 
 
+async def auth_user(client, registered_user: TelegramUser):
+    asyncio.create_task(client.get_token(registered_user))
+    return registered_user
+
+
+async def register_user(client, anonymous_user: TelegramUser):
+    telegram_user = await client.create_user(anonymous_user)
+    if isinstance(telegram_user, TelegramUser):
+        return await auth_user(client, telegram_user)
+
+
+def create_anonymous_user(data) -> TelegramUser:
+    return TelegramUser(
+        telegram_id=str(data.id),
+        first_name=data.first_name,
+        last_name=data.last_name
+    )
+
+
+def create_admin_user() -> TelegramUser:
+    return TelegramUser(
+        telegram_id=ADMIN_TELEGRAM_ID,
+        chat_id=ADMIN_CHAT_ID
+    )
+
+
 class ApiClient:
 
     cache_class = JsonCacheHandler
@@ -232,18 +258,18 @@ class ApiClient:
 
     @staticmethod
     def check_token(coro):
-        async def wrapper(self, user, token, cache=True):
+        async def wrapper(self, user, token, **kwargs):
             try:
                 if not token.payload:
                     raise jwt.exceptions.ExpiredSignatureError("Token is expired")
-                return await coro(self, user, token, cache)
+                return await coro(self, user, token, **kwargs)
             except jwt.exceptions.ExpiredSignatureError:
                 token = await self.get_token(
                     TelegramUser(**user.post_data()), False
                 )
             finally:
                 if isinstance(token, Token):
-                    return await coro(self, user, token, cache)
+                    return await coro(self, user, token, **kwargs)
                 return token
         return wrapper
 
@@ -254,6 +280,17 @@ class ApiClient:
                 for file in os.listdir(path):
                     if os.path.exists(os.path.join(path, file)):
                         os.remove(os.path.join(path, file))
+
+    async def update_program_cache(self, admin: TelegramUser):
+        while True:
+            token: Token = await self.get_token(admin)
+            if isinstance(token, Token):
+                await self.get_programs(admin, token, data=None, cache=False)
+            await asyncio.sleep(10)
+
+    async def update_cache(self, dispatcher):
+        instance: TelegramUser = create_admin_user()
+        asyncio.create_task(self.update_program_cache(instance))
 
     async def get_token(self, user: TelegramUser, cache=True):
         url = f"{self.base_url}/api/token/"
@@ -290,9 +327,9 @@ class ApiClient:
         )
 
     @check_token
-    async def get_user(self, user: TelegramUser, token: Token, cache=True) -> TelegramUser:
+    async def get_user(self, user: TelegramUser, token: Token, **kwargs) -> TelegramUser:
         url = f"{self.base_url}/api/user/"
-        if cache:
+        if kwargs.get("cache"):
             user = await self.get_cache(
                 token.post_data(), self.handler.get_user
             )
@@ -310,21 +347,16 @@ class ApiClient:
         )
 
     @check_token
-    async def get_programs(
-            self,
-            user: TelegramUser,
-            token: Token,
-            data: dict | None,
-            cache=True) -> List[TrainingProgram]:
+    async def get_programs(self, user: TelegramUser, token: Token, **kwargs) -> List[TrainingProgram]:
         url = f"{self.base_url}/api/program/list/"
-        if cache and not program_lock.locked():
+        if kwargs.get("cache") and not program_lock.locked():
             programs = await self.get_cache(
-                data, self.handler.get_programs
+                kwargs.get("data", None), self.handler.get_programs
             )
             if programs is not None:
                 return programs
-        if data:
-            params = "&".join([f"{key}={value}" for key, value in data.items()])
+        if kwargs.get("data"):
+            params = "&".join([f"{key}={value}" for key, value in kwargs["data"].items()])
             url += f"?{params}"
         headers = self.get_headers(token.access_data())
         return await self.send_request(
@@ -378,7 +410,7 @@ class ApiClient:
         )
 
     @check_token
-    async def create_subscriber(self, user: TelegramUser, token: Token, cache=True) -> Subscriber:
+    async def create_subscriber(self, user: TelegramUser, token: Token, **kwargs) -> Subscriber:
         url = f"{self.base_url}/api/subscribe/"
         headers = self.get_headers(token.access_data())
         return await self.send_request(

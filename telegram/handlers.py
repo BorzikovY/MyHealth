@@ -1,7 +1,7 @@
 import asyncio
 from aiogram import types
 
-from api import ApiClient
+from api import ApiClient, create_anonymous_user, register_user, create_admin_user
 from keyboards import start_keyboard, create_filter_keyboard
 from models import (
     TelegramUser,
@@ -9,33 +9,6 @@ from models import (
     TrainingProgram,
     Subscriber
 )
-from settings import config
-
-
-async def auth_user(client, registered_user: TelegramUser):
-    asyncio.create_task(client.get_token(registered_user))
-    return registered_user
-
-
-async def register_user(client, anonymous_user: TelegramUser):
-    telegram_user = await client.create_user(anonymous_user)
-    if isinstance(telegram_user, TelegramUser):
-        return await auth_user(client, telegram_user)
-
-
-def create_anonymous_user(data) -> TelegramUser:
-    return TelegramUser(
-        telegram_id=str(data.id),
-        first_name=data.first_name,
-        last_name=data.last_name
-    )
-
-
-def create_admin_user() -> TelegramUser:
-    return TelegramUser(
-        telegram_id=config.get("admin_telegram_id"),
-        chat_id=config.get("admin_chat_id")
-    )
 
 
 async def send_welcome(message: types.Message):
@@ -55,7 +28,7 @@ async def get_account_info(message: types.Message):
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        user: TelegramUser = await client.get_user(instance, token)
+        user: TelegramUser = await client.get_user(instance, token, cache=True)
         msg = user.message
     else:
         msg = "Введите /start, чтобы зарегистрироваться"
@@ -77,13 +50,13 @@ async def subscribe(call: types.CallbackQuery):
     await call.message.answer(msg)
 
 
-async def get_programs(message: types.Message, filter: dict = None):
+async def get_programs(message: types.Message, data: dict = None):
     client = ApiClient()
     instance: TelegramUser = create_admin_user()
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        instances: list[TrainingProgram] = await client.get_programs(instance, token, filter)
+        instances: list[TrainingProgram] = await client.get_programs(instance, token, data=data, cache=True)
         for program in instances:
             program_keyboard = types.InlineKeyboardMarkup().add(
                 types.InlineKeyboardButton("Бесплатно ✅️", callback_data="subscribe"),

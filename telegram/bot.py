@@ -177,4 +177,9 @@ dp.register_callback_query_handler(
 
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True, on_shutdown=ApiClient().clear_cache)
+    executor.start_polling(
+        dp,
+        skip_updates=True,
+        on_startup=ApiClient().update_cache,
+        on_shutdown=ApiClient().clear_cache
+    )
