@@ -22,28 +22,38 @@ async def register_user(client, anonymous_user: TelegramUser):
         return await auth_user(client, telegram_user)
 
 
-def create_anonymous_user(msg) -> TelegramUser:
+def create_anonymous_user(data) -> TelegramUser:
     return TelegramUser(
-        telegram_id=str(msg.from_user.id),
-        first_name=msg.from_user.first_name,
-        last_name=msg.from_user.last_name
+        telegram_id=str(data.id),
+        first_name=data.first_name,
+        last_name=data.last_name
     )
 
 
 def create_admin_user() -> TelegramUser:
     return TelegramUser(
-        telegram_id="60025102bg",
-        chat_id="qwerty123"
+        telegram_id=config.get("admin_telegram_id"),
+        chat_id=config.get("admin_chat_id")
     )
 
 
 @dp.callback_query_handler(text="subscribe")
-async def subscribe_user(call: types.CallbackQuery):
-    await call.message.answer("Вы подписаны!")
+async def subscribe(call: types.CallbackQuery):
+    client = ApiClient()
+    instance: TelegramUser = create_anonymous_user(call.message.chat)
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        await client.create_subscriber(instance, token)
+        msg: str = f"Вы подписаны!"
+    else:
+        msg = "Введите /start, чтобы начать..."
+
+    await call.message.answer(msg)
 
 
 @dp.callback_query_handler(text="programs")
-async def subscribe_user(call: types.CallbackQuery):
+async def programs(call: types.CallbackQuery):
     client = ApiClient()
     instance: TelegramUser = create_admin_user()
 
@@ -68,7 +78,7 @@ start_keyboard = types.InlineKeyboardMarkup(2).add(
 @dp.message_handler(commands=["start"])
 async def send_welcome(message: types.Message):
     client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(message)
+    instance: TelegramUser = create_anonymous_user(message.from_user)
 
     await register_user(client, instance)
     msg: str = "Привет 👋️ Я спорт-бот, и я помогу тебе подобрать\n" \
@@ -81,7 +91,7 @@ async def send_welcome(message: types.Message):
 @dp.message_handler(commands=["account"])
 async def get_account_info(message: types.Message):
     client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(message)
+    instance: TelegramUser = create_anonymous_user(message.from_user)
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
@@ -90,20 +100,6 @@ async def get_account_info(message: types.Message):
                    f"Имя: {user.first_name}\n" \
                    f"Фамилия: {user.last_name}\n" \
                    f"Баланс: {user.balance}"
-    else:
-        msg = "Введите /start, чтобы начать..."
-
-    await message.reply(msg)
-
-
-@dp.message_handler(commands=["subscribe"])
-async def subscribe(message: types.Message):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(message)
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        subscriber: Subscriber = await client.create_subscriber(instance, token)
-        msg: str = f"Создание аккаунта {subscriber.id}"
     else:
         msg = "Введите /start, чтобы начать..."
 
