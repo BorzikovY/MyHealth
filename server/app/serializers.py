@@ -146,15 +146,14 @@ class UserSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin
         """Meta class"""
 
         model = TelegramUser
-        read_only_fields = ("id", "balance", "subscriber")
+        read_only_fields = ("id", "balance")
         fields = (
             "id",
             "telegram_id",
             "chat_id",
             "first_name",
             "last_name",
-            "balance",
-            "subscriber",
+            "balance"
         )
 
 
@@ -289,6 +288,7 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
     Program model serializer
     """
     group = ProgramGroupSerializer(read_only=True)
+    trainings = TrainingSerializer(read_only=True, many=True)
 
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         if kwargs.get("program_id"):
@@ -315,6 +315,7 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
             "training_count",
             "difficulty",
             "group",
+            "trainings"
         )
         read_only_fields = fields
 

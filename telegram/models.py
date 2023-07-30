@@ -6,7 +6,13 @@ import re
 from dataclasses import dataclass
 from typing import List, Callable
 
-from messages import program_message, user_message
+from messages import (
+    program_message,
+    user_message,
+    program_message_short,
+    nutrition_message,
+    portion_message, training_message,
+)
 from settings import config, SECRET_KEY
 
 
@@ -54,6 +60,17 @@ class DataFilter:
 
 @dataclass
 class Portion:
+
+    def __post_init__(self):
+        self.message = portion_message.format(
+            name=self.name,
+            calories=self.calories,
+            proteins=self.proteins,
+            fats=self.fats,
+            carbs=self.carbs,
+            description=self.description
+        )
+
     id: int
     name: str
     description: str
@@ -65,6 +82,20 @@ class Portion:
 
 @dataclass
 class Nutrition:
+
+    def __post_init__(self):
+        self.message_short = nutrition_message.format(
+            name=self.name,
+            dosages=self.dosages,
+            use=self.use,
+            contraindications=self.contraindications,
+            description=self.description
+        )
+
+        self.message = f"\n{'_'*50}\n".join(
+            ["<b>Доступные порции</b>"] + [Portion(**portion).message for portion in self.portions]
+        )
+
     id: int
     name: str
     description: str
@@ -91,12 +122,22 @@ class TrainingProgramGroup:
 
 @dataclass
 class Training:
+
+    def __post_init__(self):
+        self.message = training_message.format(
+            name=self.name,
+            difficulty=self.difficulty,
+            time=self.time,
+            approach_count=self.approach_count,
+            description=self.description
+        )
+
     id: str
     name: str
     description: str
     difficulty: int
     time: str
-    appoarch_count: str
+    approach_count: int
 
 
 @dataclass
@@ -106,7 +147,7 @@ class TrainingProgram:
         difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
         group_name = self.group.name if self.group else "Общая подготовка"
         avg_training_time = self.avg_training_time if self.avg_training_time else "-"
-        self.message = program_message.format(
+        self.message_short = program_message.format(
             name=self.name, group_name=group_name,
             image="https://img2.goodfon.ru/original/1024x1024/c/e9/gym-man-woman-workout-fitness.jpg",
             difficulty=self.difficulty,
@@ -116,13 +157,14 @@ class TrainingProgram:
             avg_training_time=avg_training_time,
             description=self.description
         )
+        self.message = f"\n{'_'*50}\n".join(
+            ["<b>Доступные тренировки</b>"] + [Training(**training).message for training in self.trainings]
+        )
 
-    def filter(self, data: dict | None):
-        if data is not None:
-            first_filter = DataFilter.filter(data.get("difficulty"), data_class=float)
-            second_filter = DataFilter.filter(data.get("weeks"), data_class=int)
-            return first_filter(self.difficulty) and second_filter(self.weeks)
-        return True
+    def filter(self, data: dict):
+        first_filter = DataFilter.filter(data.get("difficulty"), data_class=float)
+        second_filter = DataFilter.filter(data.get("weeks"), data_class=int)
+        return first_filter(self.difficulty) and second_filter(self.weeks)
 
     id: int
     name: str
@@ -130,6 +172,7 @@ class TrainingProgram:
     image: str
     weeks: int
     group: TrainingProgramGroup
+    trainings: Training
     avg_training_time: timedelta
     training_count: int
     difficulty: float

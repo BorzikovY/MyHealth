@@ -1,3 +1,5 @@
+import aiogram.utils.exceptions
+
 from api import ApiClient
 
 from handlers import (
@@ -15,14 +17,14 @@ from states import (
     get_weeks_value,
     get_weeks_op,
     finish_program_filter,
-    ProgramFilter,
+    ProgramFilter, nutrition_filter_start,
 )
 from keyboards import (
     create_filter_keyboard,
     del_filter,
     program_filter,
     week_filter,
-    difficulty_filter
+    difficulty_filter, program, nutrition
 )
 from settings import config
 
@@ -39,12 +41,10 @@ dp = Dispatcher(tg, storage=storage)
 async def delete_messages(call: types.CallbackQuery, callback_data: dict):
     current_id, messages = int(call.message.message_id) - 1, int(callback_data.get("messages"))
     for _id in range(current_id, current_id-messages, -1):
-        await tg.delete_message(call.message.chat.id, _id)
-    await tg.delete_message(call.message.chat.id, current_id + 1)
-    await tg.send_message(
-        call.message.chat.id, "Список программ 🗒️",
-        reply_markup=create_filter_keyboard()
-    )
+        try:
+            await tg.delete_message(call.message.chat.id, _id)
+        except aiogram.utils.exceptions.MessageToDeleteNotFound:
+            pass
 
 
 dp.register_message_handler(send_welcome, commands=["start"])
@@ -53,9 +53,11 @@ dp.register_callback_query_handler(subscribe, text="subscribe")
 dp.register_message_handler(get_programs, commands=["programs"])
 dp.register_message_handler(get_nutritions, commands=["nutritions"])
 dp.register_message_handler(get_trainings, commands=["trainings"])
-dp.register_callback_query_handler(get_program, text="program")
+dp.register_callback_query_handler(get_program, program.filter())
+dp.register_callback_query_handler(get_nutrition, nutrition.filter())
 dp.register_callback_query_handler(get_nutrition, text="nutrition")
 dp.register_callback_query_handler(program_filter_start, text="filter_programs"),
+dp.register_callback_query_handler(nutrition_filter_start, text="filter_nutritions")
 dp.register_callback_query_handler(
     get_difficulty_value,
     program_filter.filter(),

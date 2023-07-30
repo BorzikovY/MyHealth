@@ -4,7 +4,12 @@ from typing import List
 from aiogram import types
 
 from api import ApiClient, create_anonymous_user, register_user, create_admin_user
-from keyboards import start_keyboard, create_filter_keyboard
+from keyboards import (
+    start_keyboard,
+    create_filter_keyboard,
+    program as program_filter,
+    nutrition as nutrition_filter
+)
 from models import TelegramUser, Token, TrainingProgram, Nutrition, Training
 
 
@@ -53,18 +58,30 @@ async def get_programs(message: types.Message, data: dict = None):
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        instances: list[TrainingProgram] = await client.get_programs(instance, token, data=data, cache=True)
+        instances: list[TrainingProgram] = await client.get_programs(
+            instance,
+            token,
+            data=data,
+            cache=True
+        )
         for program in instances:
             program_keyboard = types.InlineKeyboardMarkup(2).add(
-                types.InlineKeyboardButton("Бесплатно ✅️", callback_data="subscribe"),
-                types.InlineKeyboardButton(text="Подробнее", callback_data="program")
+                types.InlineKeyboardButton(
+                    "Получить бесплатно ✅️",
+                    callback_data="subscribe"
+                ),
+                types.InlineKeyboardButton(
+                    text="Подробнее...",
+                    callback_data=program_filter.new(
+                        id=program.id
+                    )
+                )
             )
-            await message.reply(program.message,
+            await message.reply(program.message_short,
                                 reply_markup=program_keyboard,
                                 parse_mode="HTML")
         msg = "Список программ 🗒️" if instances else "Контента нет 😔️"
-        await message.reply(msg,
-                            reply_markup=create_filter_keyboard(len(instances)))
+        await message.reply(msg, reply_markup=create_filter_keyboard("filter_programs", len(instances)))
     else:
         await message.reply("Введите /start, чтобы зарегистрироваться")
 
@@ -75,12 +92,31 @@ async def get_nutritions(message: types.Message):
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        nutritions: List[Nutrition] = await client.get_nutritions(instance, token)
-        msg = "Список спортивных добавок"
+        nutritions: List[Nutrition] = await client.get_nutritions(
+            instance, token,
+            cache=True,
+            data={}
+        )
         for nutrition in nutritions:
-            msg += f"\n\n{nutrition.name}:\n" \
-                   f"Описание: {nutrition.description}"
-        await message.reply(msg if msg else "Контента нет(")
+            nutrition_keyboard = types.InlineKeyboardMarkup(2).add(
+                types.InlineKeyboardButton(
+                    "Получить бесплатно ✅️",
+                    callback_data="subscribe"
+                ),
+                types.InlineKeyboardButton(
+                    text="Подробнее...",
+                    callback_data=nutrition_filter.new(
+                        id=nutrition.id
+                    )
+                )
+            )
+            await message.reply(nutrition.message_short,
+                                reply_markup=nutrition_keyboard,
+                                parse_mode="HTML")
+        await message.reply(
+            "Список спортивных добавок" if nutritions else "Контента нет(",
+            reply_markup=create_filter_keyboard("filter_nutritions", len(nutritions))
+        )
     else:
         await message.reply("Введите /start, чтобы начать...")
 
@@ -91,7 +127,10 @@ async def get_trainings(message: types.Message):
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        trainings: List[Training] = await client.get_trainings(instance, token)
+        trainings: List[Training] = await client.get_trainings(
+            instance, token,
+            cache=True, data={}
+        )
         msg = "Список тренировок"
         for training in trainings:
             msg += f"\n\n{training.name}:\n" \
@@ -101,37 +140,41 @@ async def get_trainings(message: types.Message):
         await message.reply("Введите /start, чтобы начать...")
 
 
-async def get_program(call: types.CallbackQuery):
+async def get_program(call: types.CallbackQuery, callback_data: dict):
     client = ApiClient()
     instance: TelegramUser = create_anonymous_user(data=call.message.chat)
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        program: TrainingProgram = await client.get_program(instance, token)
-        msg: str = f"{program.name}\n" \
-                   f"{program.description}\n" \
-                   f"{program.image}\n"\
-                   f"Кол-во недель: {program.weeks}\n"\
-                   f"Кол-во тренировок: {program.training_count}\n"\
-                   f"Среднее время тренировки: {program.avg_training_time}\n"\
-                   f"Сложность: {program.difficulty}n"
-        await call.message.answer(msg if msg else "Контента нет(")
+        id = int(callback_data.get("id", 0))
+        program: TrainingProgram = await client.get_program(
+            instance, token,
+            cache=True,
+            data={"id": id}
+        )
+        if isinstance(program, TrainingProgram):
+            await call.message.answer(program.message, parse_mode="HTML")
+        else:
+            await call.message.answer("Контента нет(")
     else:
         await call.message.answer("Введите /start, чтобы начать...")
 
 
-async def get_nutrition(call: types.CallbackQuery):
+async def get_nutrition(call: types.CallbackQuery, callback_data: dict):
     client = ApiClient()
     instance: TelegramUser = create_anonymous_user(call.message.chat)
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        nutrition: Nutrition = await client.get_nutrition(instance, token)
-        msg: str = f"{nutrition.name}\n" \
-                   f"{nutrition.description}\n" \
-                   f"{nutrition.dosages}\n"\
-                   f"Кол-во недель: {nutrition.use}\n"\
-                   f"Кол-во тренировок: {nutrition.contraindications}\n"
-        await call.message.answer(msg if msg else "Контента нет(")
+        id = int(callback_data.get("id", 0))
+        nutrition: Nutrition = await client.get_nutrition(
+            instance, token,
+            cache=True,
+            data={"id": id}
+        )
+        if isinstance(nutrition, Nutrition):
+            await call.message.answer(nutrition.message, parse_mode="HTML")
+        else:
+            await call.message.answer("Контента нет(")
     else:
         await call.message.answer("Введите /start, чтобы начать...")

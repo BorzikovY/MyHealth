@@ -4,13 +4,19 @@ from aiogram.utils.callback_data import CallbackData
 
 
 del_filter = CallbackData("delete", "messages")
+program = CallbackData("program", "id")
+nutrition = CallbackData("nutrition", "id")
 program_filter = CallbackData("program_filter", "filter")
 difficulty_filter = CallbackData("difficulty_filter", "difficulty")
 week_filter = CallbackData("week_filter", "weeks")
 
 
-def create_filter_keyboard(messages=None):
-    buttons = [types.InlineKeyboardButton(text="Обновить запрос", callback_data="filter_programs")]
+def create_filter_keyboard(callback_data: str = None, messages=None):
+    buttons = []
+    if callback_data:
+        buttons.append(
+            types.InlineKeyboardButton(text="Обновить запрос", callback_data=callback_data)
+        )
     if messages:
         buttons.append(
             types.InlineKeyboardButton("Удалить все", callback_data=del_filter.new(

@@ -6,7 +6,30 @@ program_message = "<b>{name} | {group_name}</b>\n\n" \
                   "<pre>Среднее время одной тренировки: {avg_training_time} ⌚️</pre>\n\n" \
                   "<b>Описание</b> <i>{description}</i>"
 
+program_message_short = "<b>{name} | {group_name}</b>\n\n" \
+                        "<pre>Сложность:                      {difficulty} {difficulty_icon}</pre>\n" \
+                        "<pre>Длительность:                   {weeks} недель</pre>\n" \
+
 user_message: str = "<b>Пользовательские данные</b>\n\n" \
                     "<pre>Имя:     {first_name}</pre>\n" \
                     "<pre>Фамилия: {last_name}</pre>\n" \
                     "<pre>Баланс:  {balance} руб.</pre>"
+
+nutrition_message = "<b>{name}</b>\n\n" \
+                    "<pre>Объем:            {dosages}</pre>\n" \
+                    "<pre>Употребление:     {use}</pre>\n" \
+                    "<pre>Противопоказания: {contraindications}</pre>\n\n" \
+                    "<b>Описание</b> <i>{description}</i>"
+
+portion_message = "<b>{name}</b>\n\n" \
+                  "<pre>Калории:  {calories}</pre>\n" \
+                  "<pre>Белки:    {proteins}</pre>\n" \
+                  "<pre>Жиры:     {fats}</pre>\n" \
+                  "<pre>Углеводы: {carbs}</pre>\n\n" \
+                  "<b>Описание</b> <i>{description}</i>"
+
+training_message = "<b>{name}</b>\n\n" \
+                   "<pre>Сложность:         {difficulty}</pre>\n" \
+                   "<pre>Воемя:             {time}</pre>\n" \
+                   "<pre>Кол-во упражнений: {approach_count}</pre>\n\n" \
+                   "<b>Описание</b> <i>{description}</i>"

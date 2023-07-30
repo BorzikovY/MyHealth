@@ -2,7 +2,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
-from handlers import get_programs
+from handlers import get_programs, get_nutritions
 from keyboards import program_filter, difficulty_filter, week_filter
 
 
@@ -12,6 +12,10 @@ class ProgramFilter(StatesGroup):
     weeks_value: State = State()
     weeks_op: State = State()
     finish_filter: State = State()
+
+
+async def nutrition_filter_start(call: types.CallbackQuery):
+    await get_nutritions(call.message)
 
 
 async def program_filter_start(call: types.CallbackQuery):
