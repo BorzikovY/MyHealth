@@ -146,14 +146,15 @@ class UserSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin
         """Meta class"""
 
         model = TelegramUser
-        read_only_fields = ("id", "balance")
+        read_only_fields = ("id", "balance", "subscriber")
         fields = (
             "id",
             "telegram_id",
             "chat_id",
             "first_name",
             "last_name",
-            "balance"
+            "balance",
+            "subscriber"
         )
 
 

@@ -10,7 +10,7 @@ from keyboards import (
     program as program_filter,
     nutrition as nutrition_filter
 )
-from models import TelegramUser, Token, TrainingProgram, Nutrition, Training
+from models import TelegramUser, Token, TrainingProgram, Nutrition, Training, Subscriber
 
 
 async def send_welcome(message: types.Message):
@@ -39,8 +39,12 @@ async def get_account_info(message: types.Message):
 
 
 async def subscribe(call: types.CallbackQuery):
+    await create_subscribe(call.message)
+
+
+async def create_subscribe(message: types.Message):
     client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(call.message.chat)
+    instance: TelegramUser = create_anonymous_user(message.chat)
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
@@ -48,8 +52,54 @@ async def subscribe(call: types.CallbackQuery):
         msg: str = f"Вы подписаны!"
     else:
         msg = "Введите /start, чтобы зарегистрироваться"
+    await message.answer(msg)
 
-    await call.message.answer(msg)
+
+async def update_subscribe(message: types.Message, data: dict):
+    client = ApiClient()
+    instance: TelegramUser = create_anonymous_user(message.chat)
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        await client.update_subscriber(
+            instance, token,
+            data=data
+        )
+        await get_my_health(message)
+    else:
+        await message.answer("Введите /start, чтобы зарегистрироваться")
+
+
+async def get_my_health(message: types.Message):
+    client = ApiClient()
+    instance: TelegramUser = create_anonymous_user(message.chat)
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        user: TelegramUser = await client.get_user(
+            instance, token, cache=True
+        )
+        subscriber = await client.get_subscriber(
+            user, token,
+            data={"telegram_id": user.subscriber},
+            cache=True
+        )
+        if isinstance(subscriber, Subscriber):
+            keyboard = types.InlineKeyboardMarkup(2).add(
+                types.InlineKeyboardButton("Посмотреть программу", callback_data=program_filter.new(
+                    id=subscriber.training_program if subscriber.training_program else 0
+                )),
+                types.InlineKeyboardButton("Обновить данные", callback_data="filter_subscribe")
+            )
+            await message.reply(
+                subscriber.message,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        else:
+            await message.reply("Введите /subscribe, чтобы подписаться")
+    else:
+        await message.reply("Введите /start, чтобы зарегистрироваться")
 
 
 async def get_programs(message: types.Message, data: dict = None):

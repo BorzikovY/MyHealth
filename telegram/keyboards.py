@@ -9,6 +9,7 @@ nutrition = CallbackData("nutrition", "id")
 program_filter = CallbackData("program_filter", "filter")
 difficulty_filter = CallbackData("difficulty_filter", "difficulty")
 week_filter = CallbackData("week_filter", "weeks")
+gender_filter = CallbackData("gender", "gender")
 
 
 def create_filter_keyboard(callback_data: str = None, messages=None):

@@ -8,7 +8,9 @@ from handlers import (
     subscribe,
     get_programs,
     get_nutritions,
-    get_trainings, get_program, get_nutrition
+    get_program,
+    get_nutrition,
+    get_my_health, create_subscribe
 )
 from states import (
     program_filter_start,
@@ -17,14 +19,23 @@ from states import (
     get_weeks_value,
     get_weeks_op,
     finish_program_filter,
-    ProgramFilter, nutrition_filter_start,
+    ProgramFilter,
+    SubscribeState,
+    nutrition_filter_start,
+    get_age,
+    get_height,
+    get_weight,
+    get_gender,
+    start_subscribe_filter
 )
 from keyboards import (
-    create_filter_keyboard,
     del_filter,
     program_filter,
     week_filter,
-    difficulty_filter, program, nutrition
+    difficulty_filter,
+    program,
+    nutrition,
+    gender_filter
 )
 from settings import config
 
@@ -48,14 +59,15 @@ async def delete_messages(call: types.CallbackQuery, callback_data: dict):
 
 
 dp.register_message_handler(send_welcome, commands=["start"])
+dp.register_message_handler(create_subscribe, commands=["subscribe"])
 dp.register_message_handler(get_account_info, commands=["account"])
-dp.register_callback_query_handler(subscribe, text="subscribe")
 dp.register_message_handler(get_programs, commands=["programs"])
 dp.register_message_handler(get_nutritions, commands=["nutritions"])
-dp.register_message_handler(get_trainings, commands=["trainings"])
+dp.register_message_handler(get_my_health, commands=["my_health"])
 dp.register_callback_query_handler(get_program, program.filter())
 dp.register_callback_query_handler(get_nutrition, nutrition.filter())
 dp.register_callback_query_handler(get_nutrition, text="nutrition")
+dp.register_callback_query_handler(subscribe, text="subscribe")
 dp.register_callback_query_handler(program_filter_start, text="filter_programs"),
 dp.register_callback_query_handler(nutrition_filter_start, text="filter_nutritions")
 dp.register_callback_query_handler(
@@ -63,16 +75,31 @@ dp.register_callback_query_handler(
     program_filter.filter(),
     state=ProgramFilter.difficulty_value
 )
-dp.register_message_handler(get_difficulty_op, state=ProgramFilter.difficulty_op)
+dp.register_message_handler(
+    get_difficulty_op,
+    state=ProgramFilter.difficulty_op
+)
 dp.register_callback_query_handler(
     get_weeks_value,
     difficulty_filter.filter(),
     state=ProgramFilter.weeks_value)
-dp.register_message_handler(get_weeks_op, state=ProgramFilter.weeks_op)
+dp.register_message_handler(
+    get_weeks_op,
+    state=ProgramFilter.weeks_op
+)
 dp.register_callback_query_handler(
     finish_program_filter,
     week_filter.filter(),
     state=ProgramFilter.finish_filter)
+dp.register_callback_query_handler(start_subscribe_filter, text="filter_subscribe")
+dp.register_message_handler(get_age, state=SubscribeState.age)
+dp.register_message_handler(get_height, state=SubscribeState.height)
+dp.register_message_handler(get_weight, state=SubscribeState.weight)
+dp.register_callback_query_handler(
+    get_gender,
+    gender_filter.filter(),
+    state=SubscribeState.gender
+)
 
 
 if __name__ == '__main__':

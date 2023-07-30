@@ -11,7 +11,7 @@ from messages import (
     user_message,
     program_message_short,
     nutrition_message,
-    portion_message, training_message,
+    portion_message, training_message, subscriber_message,
 )
 from settings import config, SECRET_KEY
 
@@ -180,11 +180,39 @@ class TrainingProgram:
 
 @dataclass
 class Subscriber:
+
+    @property
+    def age_prefix(self):
+        if self.age:
+            end = int(str(self.age)[-1])
+            if end == 1:
+                return "год"
+            elif end in range(2, 5):
+                return "года"
+        return "лет"
+
+    @property
+    def gender_icon(self):
+        if self.gender == "male":
+            return "👨"
+        elif self.gender == "female":
+            return "👩️"
+        return "🚁️"
+
+    def __post_init__(self):
+        self.message = subscriber_message.format(
+            age=self.age if self.age is not None else "?",
+            age_prefix=self.age_prefix,
+            height=self.height if self.height is not None else "?",
+            weight=self.weight if self.weight is not None else "?",
+            gender_icon=self.gender_icon
+        )
+
     id: int
     age: int
     height: float
     weight: float
-    training_program: TrainingProgram
+    training_program: int = None
     gender: str = 'helicopter'
     is_adult: bool = False
 

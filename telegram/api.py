@@ -430,6 +430,42 @@ class ApiClient:
         )
 
     @check_token
+    async def update_subscriber(self, user: TelegramUser, token: Token, **kwargs) -> Subscriber:
+        url = f"{self.base_url}/api/subscribe/"
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "put",
+            205,
+            Subscriber,
+            "id",
+            self.handler.update_subscriber,
+            data=json.dumps(kwargs.get("data", {}))
+        )
+
+    @check_token
+    async def get_subscriber(self, user: TelegramUser, token: Token, **kwargs) -> Subscriber:
+        if kwargs.get("cache"):
+            subscriber = await self.get_cache(
+                kwargs.get("data"), self.handler.get_subscriber
+            )
+            if subscriber:
+                return subscriber
+        url = f"{self.base_url}/api/subscribe/"
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "get",
+            200,
+            Subscriber,
+            "id",
+            self.handler.update_subscriber,
+            data=json.dumps(token.post_data())
+        )
+
+    @check_token
     async def get_program(self, user: TelegramUser, token: Token, **kwargs) -> TrainingProgram:
         if kwargs.get("cache") and not program_lock.locked():
             program = await self.get_cache(

@@ -2,8 +2,8 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
-from handlers import get_programs, get_nutritions
-from keyboards import program_filter, difficulty_filter, week_filter
+from handlers import get_programs, get_nutritions, update_subscribe
+from keyboards import program_filter, difficulty_filter, week_filter, gender_filter
 
 
 class ProgramFilter(StatesGroup):
@@ -12,6 +12,75 @@ class ProgramFilter(StatesGroup):
     weeks_value: State = State()
     weeks_op: State = State()
     finish_filter: State = State()
+
+
+class SubscribeState(StatesGroup):
+    age: State = State()
+    height: State = State()
+    weight: State = State()
+    gender: State = State()
+
+
+async def start_subscribe_filter(call: types.CallbackQuery):
+    await call.bot.send_message(
+        call.message.chat.id,
+        "Введите возраст",
+    )
+    await SubscribeState.age.set()
+
+
+async def get_age(message: types.Message, state: FSMContext):
+    try:
+        value = int(message.text)
+        assert 0 <= value <= 100
+        await state.update_data(age=value)
+        await message.answer("Введите рост")
+        await SubscribeState.next()
+    except Exception:
+        await message.answer("Введите целое число от 0 до 100")
+        await SubscribeState.height.set()
+
+
+async def get_height(message: types.Message, state: FSMContext):
+    try:
+        value = float(message.text)
+        assert 1. <= value <= 3.
+        await state.update_data(height=value)
+        await message.answer("Введите вес")
+        await SubscribeState.next()
+    except Exception:
+        await message.answer("Введите десятичное число от 1 до 3")
+        await SubscribeState.height.set()
+
+
+async def get_weight(message: types.Message, state: FSMContext):
+    try:
+        value = float(message.text)
+        assert 20. <= value <= 220.
+        await state.update_data(weight=value)
+        keyboard = types.InlineKeyboardMarkup(3).add(
+            types.InlineKeyboardButton("мужской", callback_data=gender_filter.new(
+                gender="male"
+            )),
+            types.InlineKeyboardButton("женский", callback_data=gender_filter.new(
+                gender="female"
+            )),
+            types.InlineKeyboardButton("другой", callback_data=gender_filter.new(
+                gender="helicopter"
+            )),
+        )
+        await message.answer("Выберите гендер", reply_markup=keyboard)
+        await SubscribeState.next()
+    except Exception:
+        await message.answer("Введите десятичное число от 20 до 220")
+        await SubscribeState.weight.set()
+
+
+async def get_gender(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    data = await state.get_data()
+    data["gender"] = callback_data.get("gender")
+    await update_subscribe(call.message, data)
+    await state.finish()
 
 
 async def nutrition_filter_start(call: types.CallbackQuery):

@@ -15,11 +15,17 @@ user_message: str = "<b>Пользовательские данные</b>\n\n" \
                     "<pre>Фамилия: {last_name}</pre>\n" \
                     "<pre>Баланс:  {balance} руб.</pre>"
 
+subscriber_message: str = "<b>Личная информация</b>\n\n" \
+                          "<pre>Возраст: {age} {age_prefix}</pre>\n" \
+                          "<pre>Рост:    {height} м</pre>\n" \
+                          "<pre>Вес:     {weight} кг</pre>\n" \
+                          "<pre>Гендер:  {gender_icon}</pre>\n" \
+
 nutrition_message = "<b>{name}</b>\n\n" \
-                    "<pre>Объем:            {dosages}</pre>\n" \
-                    "<pre>Употребление:     {use}</pre>\n" \
-                    "<pre>Противопоказания: {contraindications}</pre>\n\n" \
-                    "<b>Описание</b> <i>{description}</i>"
+                "<pre>Объем:            {dosages}</pre>\n" \
+                "<pre>Употребление:     {use}</pre>\n" \
+                "<pre>Противопоказания: {contraindications}</pre>\n\n" \
+                "<b>Описание</b> <i>{description}</i>"
 
 portion_message = "<b>{name}</b>\n\n" \
                   "<pre>Калории:  {calories}</pre>\n" \
