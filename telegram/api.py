@@ -236,7 +236,7 @@ class ApiClient:
         sslcontext = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
         async with ClientSession(headers=headers) as session:
             request = getattr(session, method)
-            response = await request(url, sslcontext=sslcontext, **data)
+            response = await request(url, ssl=sslcontext, **data)
             content = (await response.read()).decode()
             if response.status == status:
                 if cache_function is not None:
