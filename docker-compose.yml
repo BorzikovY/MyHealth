@@ -41,6 +41,12 @@ services:
       - ./certbot/conf:/etc/letsencrypt/:rw
     depends_on:
       - nginx
+  telegram:
+    build: ./telegram
+    restart: always
+    command: sh -c "export env_file=.env.dev && python bot.py"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:

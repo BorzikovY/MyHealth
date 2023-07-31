@@ -125,7 +125,6 @@ class UserSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin
     User model serializer
     """
 
-    subscriber = SubscriberSerializer(read_only=True)
     chat_id = CharField(required=True, write_only=True, max_length=128)
 
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
@@ -155,7 +154,7 @@ class UserSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin
             "first_name",
             "last_name",
             "balance",
-            "subscriber",
+            "subscriber"
         )
 
 
@@ -290,6 +289,7 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
     Program model serializer
     """
     group = ProgramGroupSerializer(read_only=True)
+    trainings = TrainingSerializer(read_only=True, many=True)
 
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         if kwargs.get("program_id"):
@@ -316,6 +316,7 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
             "training_count",
             "difficulty",
             "group",
+            "trainings"
         )
         read_only_fields = fields
 
