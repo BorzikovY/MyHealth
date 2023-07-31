@@ -9,7 +9,7 @@ import aiofiles
 from aiohttp import ClientSession
 
 from models import TelegramUser, Token, TrainingProgram, Subscriber, Nutrition, Training
-from settings import SECRET_KEY, HOST, ADMIN_TELEGRAM_ID, ADMIN_CHAT_ID
+from settings import SECRET_KEY, HOST, ADMIN_TELEGRAM_ID, ADMIN_CHAT_ID, CACHE_UPDATE_TIME
 
 program_lock = asyncio.Lock()
 nutrition_lock = asyncio.Lock()
@@ -283,14 +283,14 @@ class ApiClient:
             token: Token = await self.get_token(admin)
             if isinstance(token, Token):
                 await self.get_programs(admin, token, data=None, cache=False)
-            await asyncio.sleep(10)
+            await asyncio.sleep(CACHE_UPDATE_TIME)
 
     async def update_nutrition_cache(self, admin: TelegramUser):
         while True:
             token: Token = await self.get_token(admin)
             if isinstance(token, Token):
                 await self.get_nutritions(admin, token, data=None, cache=False)
-            await asyncio.sleep(10)
+            await asyncio.sleep(CACHE_UPDATE_TIME)
 
     async def update_cache(self, dispatcher):
         instance: TelegramUser = create_admin_user()
@@ -358,8 +358,7 @@ class ApiClient:
             programs = await self.get_cache(
                 kwargs.get("data"), self.handler.get_programs
             )
-            if programs:
-                return programs
+            return programs
         if kwargs.get("data"):
             params = "&".join([f"{key}={value}" for key, value in kwargs["data"].items()])
             url += f"?{params}"
@@ -381,8 +380,7 @@ class ApiClient:
             nutritions = await self.get_cache(
                 kwargs.get("data"), self.handler.get_nutritions
             )
-            if nutritions:
-                return nutritions
+            return nutritions
         headers = self.get_headers(token.access_data())
         return await self.send_request(
             url,
@@ -401,8 +399,7 @@ class ApiClient:
             trainings = await self.get_cache(
                 kwargs.get("data"), self.handler.get_trainings
             )
-            if trainings:
-                return trainings
+            return trainings
         headers = self.get_headers(token.access_data())
         return await self.send_request(
             url,

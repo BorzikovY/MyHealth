@@ -163,7 +163,7 @@ async def get_weeks_op(message: types.Message, state: FSMContext):
         await ProgramFilter.next()
     except Exception:
         await message.answer("Введите число больше 0")
-        await ProgramFilter.weeks_value.set()
+        await ProgramFilter.weeks_op.set()
 
 
 async def finish_program_filter(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
