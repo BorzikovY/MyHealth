@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import ssl
 from typing import List
 
 import jwt
@@ -232,9 +233,10 @@ class ApiClient:
             model, _id_field, cache_function=None,
             **data
     ):
+        sslcontext = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
         async with ClientSession(headers=headers) as session:
             request = getattr(session, method)
-            response = await request(url, **data)
+            response = await request(url, sslcontext=sslcontext, **data)
             content = (await response.read()).decode()
             if response.status == status:
                 if cache_function is not None:
