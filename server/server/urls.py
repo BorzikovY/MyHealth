@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.http import HttpResponse
 
 from django.urls import path, include
 from django.conf import settings
@@ -27,7 +28,12 @@ admin.autodiscover()
 admin.site.login_form = TelegramUserLoginForm
 
 
+def ok(request):
+    return HttpResponse("Ok", status=200)
+
+
 urlpatterns = [
+    path("/", ok),
     path("admin/", admin.site.urls),
     path("api/", include('app.urls'))
 ]
