@@ -303,7 +303,7 @@ class ApiClient:
             token = await self.get_cache(
                 user.access_data(), self.handler.get_token
             )
-            if token:
+            if token is not None:
                 return token
         headers = self.get_headers()
         return await self.send_request(
@@ -338,7 +338,7 @@ class ApiClient:
             user = await self.get_cache(
                 token.post_data(), self.handler.get_user
             )
-            if user:
+            if user is not None:
                 return user
         headers = self.get_headers(token.access_data())
         return await self.send_request(
@@ -358,7 +358,8 @@ class ApiClient:
             programs = await self.get_cache(
                 kwargs.get("data"), self.handler.get_programs
             )
-            return programs
+            if programs is not None:
+                return programs
         if kwargs.get("data"):
             params = "&".join([f"{key}={value}" for key, value in kwargs["data"].items()])
             url += f"?{params}"
@@ -380,7 +381,8 @@ class ApiClient:
             nutritions = await self.get_cache(
                 kwargs.get("data"), self.handler.get_nutritions
             )
-            return nutritions
+            if nutritions is not None:
+                return nutritions
         headers = self.get_headers(token.access_data())
         return await self.send_request(
             url,
@@ -399,7 +401,8 @@ class ApiClient:
             trainings = await self.get_cache(
                 kwargs.get("data"), self.handler.get_trainings
             )
-            return trainings
+            if trainings is not None:
+                return trainings
         headers = self.get_headers(token.access_data())
         return await self.send_request(
             url,
@@ -447,7 +450,7 @@ class ApiClient:
             subscriber = await self.get_cache(
                 kwargs.get("data"), self.handler.get_subscriber
             )
-            if subscriber:
+            if subscriber is not None:
                 return subscriber
         url = f"{self.base_url}/api/subscribe/"
         headers = self.get_headers(token.access_data())
@@ -468,7 +471,7 @@ class ApiClient:
             program = await self.get_cache(
                 kwargs.get("data"), self.handler.get_programs
             )
-            if program:
+            if program is not None:
                 return program
         data = kwargs.get("data", {})
         url = f"{self.base_url}/api/program/{data.get('id', 0)}/"
@@ -488,7 +491,7 @@ class ApiClient:
             nutrition = await self.get_cache(
                 kwargs.get("data"), self.handler.get_nutritions
             )
-            if nutrition:
+            if nutrition is not None:
                 return nutrition
         data = kwargs.get("data", {})
         url = f"{self.base_url}/api/nutrition/{data.get('id')}/"
