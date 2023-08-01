@@ -9,6 +9,7 @@ from typing import List
 
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Avg, F, Sum
 
@@ -40,8 +41,20 @@ class TelegramUser(AbstractUser):
         verbose_name="Фамилия", max_length=64, null=True, blank=True
     )
     balance = models.FloatField(
-        verbose_name="Баланс", default=0.0, blank=True, null=True
+        verbose_name="Баланс", default=0.0, blank=True, null=True,
+        validators=[MinValueValidator(0.)],
     )
+
+    @property
+    def cash(self):
+        return self.balance
+
+    @cash.setter
+    def cash(self, value):
+        if value >= 0.:
+            self.balance = value
+        else:
+            raise ValidationError("Balance is below 0")
 
     @classmethod
     def encode_chat_id(cls, string: str) -> str:
@@ -199,6 +212,7 @@ class TrainingProgram(models.Model):
     weeks = models.SmallIntegerField(
         verbose_name="Кол-во недель", validators=[MinValueValidator(1)]
     )
+    price = models.FloatField(verbose_name="Цена", default=0.0)
     trainings = models.ManyToManyField(
         "Training",
         verbose_name="Тренировки",
@@ -380,6 +394,7 @@ class SportNutrition(models.Model):
     description = models.TextField(verbose_name="Описание")
     dosages = models.TextField(verbose_name="Дозировки")
     use = models.TextField(verbose_name="Способ применения")
+    price = models.FloatField(verbose_name="Цена", default=0.0)
     contraindications = models.TextField(
         verbose_name="Противопоказания",
         null=True,

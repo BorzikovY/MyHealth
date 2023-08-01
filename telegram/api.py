@@ -92,9 +92,9 @@ class JsonCacheHandler(BaseCacheHandler):
             return json.loads(data)
         return {}
 
-    async def get_programs(self, data: dict) -> List[TrainingProgram]:
-        if data.get("id"):
-            program = json.loads(await self.programs.get(f"{data['id']}.{self.ext}"))
+    async def get_programs(self, data: dict, _id: str) -> List[TrainingProgram]:
+        if data.get(_id):
+            program = json.loads(await self.programs.get(f"{data[_id]}.{self.ext}"))
             return TrainingProgram(**program) if program else None
 
         programs = [json.loads(content) for content in await self.programs.get_all()]
@@ -102,40 +102,40 @@ class JsonCacheHandler(BaseCacheHandler):
 
         return [instance for instance in instances if instance.filter(data)]
 
-    async def get_nutritions(self, data: dict) -> List[Nutrition]:
-        if data.get("id"):
-            nutrition = json.loads(await self.nutritions.get(f"{data['id']}.{self.ext}"))
+    async def get_nutritions(self, data: dict, _id: str) -> List[Nutrition]:
+        if data.get(_id):
+            nutrition = json.loads(await self.nutritions.get(f"{data[_id]}.{self.ext}"))
             return Nutrition(**nutrition) if nutrition else None
 
         nutritions = [json.loads(content) for content in await self.nutritions.get_all()]
 
         return [Nutrition(**nutrition) for nutrition in nutritions] if nutritions else None
 
-    async def get_trainings(self, data: dict) -> List[Training]:
+    async def get_trainings(self, data: dict, _id: str) -> List[Training]:
         trainings = [json.loads(content) for content in await self.trainings.get_all()]
 
         return [Training(**training) for training in trainings] if trainings else None
 
-    async def get_user(self, data: dict) -> TelegramUser:
+    async def get_user(self, data: dict, _id: str) -> TelegramUser:
         async with self.user_lock:
             user = json.loads(await self.users.get(
-                f"{data.get('telegram_id')}.{self.ext}"
+                f"{data.get(_id)}.{self.ext}"
             ))
 
         return TelegramUser(**user) if user else None
 
-    async def get_token(self, data: dict) -> Token:
+    async def get_token(self, data: dict, _id: str) -> Token:
         async with self.token_lock:
             token = json.loads(await self.tokens.get(
-                f"{data.get('telegram_id')}.{self.ext}"
+                f"{data.get(_id)}.{self.ext}"
             ))
 
         return Token(**token) if token else None
 
-    async def get_subscriber(self, data: dict) -> Subscriber:
+    async def get_subscriber(self, data: dict, _id: str) -> Subscriber:
         async with self.subscriber_lock:
             subscriber = json.loads(await self.subscribers.get(
-                f"{data.get('telegram_id')}.{self.ext}"
+                f"{data.get(_id)}.{self.ext}"
             ))
 
         return Subscriber(**subscriber) if subscriber else None
@@ -237,6 +237,7 @@ class ApiClient:
         async with ClientSession(headers=headers) as session:
             request = getattr(session, method)
             response = await request(url, ssl=sslcontext, **data)
+
             content = (await response.read()).decode()
             if response.status == status:
                 if cache_function is not None:
@@ -250,9 +251,9 @@ class ApiClient:
         return self.handler.from_json(content)
 
     @staticmethod
-    async def get_cache(data, cache_function):
+    async def get_cache(_id_field, data, cache_function):
         data = data if data is not None else {}
-        instance = await cache_function(data)
+        instance = await cache_function(data, _id_field)
         return instance
 
     @staticmethod
@@ -303,7 +304,7 @@ class ApiClient:
         url = f"{self.base_url}/api/token/"
         if cache:
             token = await self.get_cache(
-                user.access_data(), self.handler.get_token
+                "telegram_id", user.access_data(), self.handler.get_token
             )
             if token is not None:
                 return token
@@ -338,7 +339,7 @@ class ApiClient:
         url = f"{self.base_url}/api/user/"
         if kwargs.get("cache"):
             user = await self.get_cache(
-                token.post_data(), self.handler.get_user
+                "telegram_id", token.post_data(), self.handler.get_user
             )
             if user is not None:
                 return user
@@ -358,7 +359,7 @@ class ApiClient:
         url = f"{self.base_url}/api/program/list/"
         if kwargs.get("cache") and not program_lock.locked():
             programs = await self.get_cache(
-                kwargs.get("data"), self.handler.get_programs
+                "id", kwargs.get("data"), self.handler.get_programs
             )
             if programs is not None:
                 return programs
@@ -381,7 +382,7 @@ class ApiClient:
         url = f"{self.base_url}/api/nutrition/list/"
         if kwargs.get("cache") and not nutrition_lock.locked():
             nutritions = await self.get_cache(
-                kwargs.get("data"), self.handler.get_nutritions
+                "id", kwargs.get("data"), self.handler.get_nutritions
             )
             if nutritions is not None:
                 return nutritions
@@ -401,7 +402,7 @@ class ApiClient:
         url = f"{self.base_url}/api/training/list/?program_id=2"
         if kwargs.get("cache") and not training_lock.locked():
             trainings = await self.get_cache(
-                kwargs.get("data"), self.handler.get_trainings
+                "id", kwargs.get("data"), self.handler.get_trainings
             )
             if trainings is not None:
                 return trainings
@@ -439,7 +440,7 @@ class ApiClient:
             url,
             headers,
             "put",
-            205,
+            200,
             Subscriber,
             "id",
             self.handler.update_subscriber,
@@ -450,7 +451,7 @@ class ApiClient:
     async def get_subscriber(self, user: TelegramUser, token: Token, **kwargs) -> Subscriber:
         if kwargs.get("cache"):
             subscriber = await self.get_cache(
-                kwargs.get("data"), self.handler.get_subscriber
+                "id", kwargs.get("data"), self.handler.get_subscriber
             )
             if subscriber is not None:
                 return subscriber
@@ -471,7 +472,7 @@ class ApiClient:
     async def get_program(self, user: TelegramUser, token: Token, **kwargs) -> TrainingProgram:
         if kwargs.get("cache") and not program_lock.locked():
             program = await self.get_cache(
-                kwargs.get("data"), self.handler.get_programs
+                "id", kwargs.get("data"), self.handler.get_programs
             )
             if program is not None:
                 return program
@@ -491,7 +492,7 @@ class ApiClient:
     async def get_nutrition(self, user: TelegramUser, token: Token, **kwargs) -> Nutrition:
         if kwargs.get("cache") and not nutrition_lock.locked():
             nutrition = await self.get_cache(
-                kwargs.get("data"), self.handler.get_nutritions
+                "id", kwargs.get("data"), self.handler.get_nutritions
             )
             if nutrition is not None:
                 return nutrition

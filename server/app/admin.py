@@ -46,7 +46,7 @@ class TelegramUserAdmin(admin.ModelAdmin):
         ).get_readonly_fields(request, obj)
 
     fieldsets = (
-        (None, {"fields": ("telegram_id", "chat_id", "first_name", "last_name")}),
+        (None, {"fields": ("telegram_id", "balance", "first_name", "last_name")}),
         (
             "Permissions",
             {"fields": ("is_staff", "is_active", "groups", "user_permissions")},

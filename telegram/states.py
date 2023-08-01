@@ -24,7 +24,7 @@ class SubscribeState(StatesGroup):
 async def start_subscribe_filter(call: types.CallbackQuery):
     await call.bot.send_message(
         call.message.chat.id,
-        "Введите возраст",
+        "Введите возраст 👶️-🧓️",
     )
     await SubscribeState.age.set()
 
@@ -34,7 +34,7 @@ async def get_age(message: types.Message, state: FSMContext):
         value = int(message.text)
         assert 0 <= value <= 100
         await state.update_data(age=value)
-        await message.answer("Введите рост")
+        await message.answer("Введите рост 📏️ (в метрах)")
         await SubscribeState.next()
     except Exception:
         await message.answer("Введите целое число от 0 до 100")
@@ -46,7 +46,7 @@ async def get_height(message: types.Message, state: FSMContext):
         value = float(message.text)
         assert 1. <= value <= 3.
         await state.update_data(height=value)
-        await message.answer("Введите вес")
+        await message.answer("Введите вес ⚖️ (в кг)")
         await SubscribeState.next()
     except Exception:
         await message.answer("Введите десятичное число от 1 до 3")
@@ -69,7 +69,7 @@ async def get_weight(message: types.Message, state: FSMContext):
                 gender="helicopter"
             )),
         )
-        await message.answer("Выберите гендер", reply_markup=keyboard)
+        await message.answer("Выберите гендер 👨️/👩️/🚁️", reply_markup=keyboard)
         await SubscribeState.next()
     except Exception:
         await message.answer("Введите десятичное число от 20 до 220")
@@ -79,6 +79,7 @@ async def get_weight(message: types.Message, state: FSMContext):
 async def get_gender(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     data = await state.get_data()
     data["gender"] = callback_data.get("gender")
+    data["message"] = "Данные успешно обновлены! 😉️"
     await update_subscribe(call.message, data)
     await state.finish()
 

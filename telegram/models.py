@@ -101,6 +101,7 @@ class Nutrition:
     description: str
     dosages: str
     use: str
+    price: float
     contraindications: str
     portions: List[Portion]
 
@@ -171,6 +172,7 @@ class TrainingProgram:
     description: str
     image: str
     weeks: int
+    price: float
     group: TrainingProgramGroup
     trainings: Training
     avg_training_time: timedelta
@@ -213,6 +215,7 @@ class Subscriber:
     height: float
     weight: float
     training_program: int = None
+    sport_nutrition: int = None
     gender: str = 'helicopter'
     is_adult: bool = False
 

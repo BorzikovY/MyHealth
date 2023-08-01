@@ -10,7 +10,9 @@ from handlers import (
     get_nutritions,
     get_program,
     get_nutrition,
-    get_my_health, create_subscribe
+    get_my_health,
+    create_subscribe,
+    put_subscribe
 )
 from states import (
     program_filter_start,
@@ -35,7 +37,8 @@ from keyboards import (
     difficulty_filter,
     program,
     nutrition,
-    gender_filter
+    gender_filter,
+    update_subscribe
 )
 from settings import config
 
@@ -68,6 +71,7 @@ dp.register_callback_query_handler(get_program, program.filter())
 dp.register_callback_query_handler(get_nutrition, nutrition.filter())
 dp.register_callback_query_handler(get_nutrition, text="nutrition")
 dp.register_callback_query_handler(subscribe, text="subscribe")
+dp.register_callback_query_handler(put_subscribe, update_subscribe.filter())
 dp.register_callback_query_handler(program_filter_start, text="filter_programs"),
 dp.register_callback_query_handler(nutrition_filter_start, text="filter_nutritions")
 dp.register_callback_query_handler(

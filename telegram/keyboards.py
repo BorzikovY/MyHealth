@@ -6,6 +6,7 @@ from aiogram.utils.callback_data import CallbackData
 del_filter = CallbackData("delete", "messages")
 program = CallbackData("program", "id")
 nutrition = CallbackData("nutrition", "id")
+update_subscribe = CallbackData("subscribe", "training_program", "sport_nutrition")
 program_filter = CallbackData("program_filter", "filter")
 difficulty_filter = CallbackData("difficulty_filter", "difficulty")
 week_filter = CallbackData("week_filter", "weeks")

@@ -27,7 +27,6 @@ from app.permissions import (
     UnauthenticatedPost,
     AuthenticatedPost,
     SubscribePermission,
-    UnauthenticatedGet,
     GroupPermission
 )
 from app.serializers import (
@@ -37,7 +36,8 @@ from app.serializers import (
     ProgramSerializer,
     NutritionSerializer,
     TrainingSerializer,
-    ExerciseSerializer
+    ExerciseSerializer,
+    SubscriberUpdateSerializer
 )
 
 
@@ -102,7 +102,7 @@ class RestApi(type):
         serializer = self.get_serializer(data=request.data, **kwargs)
         if serializer.is_valid(raise_exception=True):
             serializer.update(serializer.instance, serializer.validated_data)
-            return Response(serializer.data, status=HTTP_205_RESET_CONTENT)
+            return Response(serializer.data, status=HTTP_200_OK)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
     def delete(
@@ -142,7 +142,14 @@ class SubscriberApi(generics.GenericAPIView, metaclass=RestApi):
 
     __methods__ = ["get", "post", "put", "delete"]
     serializer_class = SubscriberSerializer
+    update_serializer = SubscriberUpdateSerializer
     permission_classes = (SubscribePermission | AuthenticatedPost,)
+
+    def get_serializer(self, *args, **kwargs):
+        kwargs["context"] = self.get_serializer_context()
+        if kwargs["context"]["request"].method == "PUT":
+            return self.update_serializer(*args, **kwargs)
+        return self.serializer_class(*args, **kwargs)
 
 
 class ProgramApi(generics.GenericAPIView, metaclass=RestApi):
@@ -150,9 +157,9 @@ class ProgramApi(generics.GenericAPIView, metaclass=RestApi):
     Program api
     """
 
-    __methods__ = ["get"]
+    __methods__ = ["get", "post"]
     serializer_class = ProgramSerializer
-    permission_classes = (SubscribePermission | UnauthenticatedGet,)
+    permission_classes = (SubscribePermission,)
 
 
 class NutritionApi(generics.GenericAPIView, metaclass=RestApi):
@@ -160,7 +167,7 @@ class NutritionApi(generics.GenericAPIView, metaclass=RestApi):
     Nutrition api
     """
 
-    __methods__ = ["get"]
+    __methods__ = ["get", "post"]
     serializer_class = NutritionSerializer
     permission_classes = (SubscribePermission,)
 

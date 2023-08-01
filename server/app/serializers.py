@@ -1,6 +1,7 @@
 """Import modules to work with serializers"""
 from abc import abstractmethod
 
+from django.db import transaction
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
 from django.core.exceptions import ValidationError
@@ -108,7 +109,6 @@ class SubscriberSerializer(ModelSerializer, InstanceCreationMixin, InitSerialize
         """Meta class"""
 
         model = Subscriber
-        read_only_fields = ["id", "is_adult"]
         fields = (
             "id",
             "gender",
@@ -116,8 +116,10 @@ class SubscriberSerializer(ModelSerializer, InstanceCreationMixin, InitSerialize
             "height",
             "weight",
             "is_adult",
-            "training_program"
+            "training_program",
+            "sport_nutrition"
         )
+        read_only_fields = fields
 
 
 class UserSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
@@ -202,6 +204,7 @@ class NutritionSerializer(ModelSerializer, InstanceCreationMixin, InitSerializer
             "id",
             "name",
             "description",
+            "price",
             "dosages",
             "use",
             "contraindications",
@@ -310,6 +313,7 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
             "id",
             "name",
             "description",
+            "price",
             "image",
             "weeks",
             "avg_training_time",
@@ -330,7 +334,51 @@ class UserUpdateSerializer(UserSerializer):  # pylint: disable=too-many-ancestor
         """Meta class"""
 
         model = TelegramUser
-        fields = ("first_name", "last_name")
+        fields = (
+            "id",
+            "telegram_id",
+            "first_name",
+            "last_name"
+            "balance"
+        )
+        read_only_field = ["id", "telegram_id"]
+
+
+class SubscriberUpdateSerializer(SubscriberSerializer):  # pylint: disable=too-many-ancestors
+    """
+    User update serializer
+    """
+    def update(self, instance, validated_data: dict):
+        for personal_field in ("age", "height", "weight", "gender"):
+            setattr(instance, personal_field, validated_data.get(personal_field))
+        instance.save()
+        for private_field in ("training_program", "sport_nutrition"):
+            with transaction.atomic():
+                try:
+                    content = validated_data.get(private_field)
+                    telegram_user = self.instance.telegram_user
+                    if content is not None and getattr(self.instance, private_field) != content:
+                        telegram_user.cash -= content.price
+                        setattr(self.instance, private_field, content)
+                        instance.save()
+                        telegram_user.save()
+                except ValidationError as error:
+                    raise SerializerError(error.message) from error
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
+
+        model = Subscriber
+        fields = (
+            "id",
+            "age",
+            "height",
+            "weight",
+            "gender",
+            "training_program",
+            "sport_nutrition"
+        )
+        read_only_fields = ["id",]
 
 
 class UserLoginSerializer(Serializer):  # pylint: disable=abstract-method
