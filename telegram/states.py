@@ -1,9 +1,17 @@
+from datetime import timedelta
+
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 from handlers import get_programs, get_nutritions, update_subscribe
-from keyboards import program_filter, difficulty_filter, week_filter, gender_filter
+from keyboards import (
+    schedule_keyboard,
+    start_schedule_keyboard,
+    gender_keyboard,
+    start_program_keyboard,
+    create_op_keyboard
+)
 
 
 class ProgramFilter(StatesGroup):
@@ -19,6 +27,52 @@ class SubscribeState(StatesGroup):
     height: State = State()
     weight: State = State()
     gender: State = State()
+
+
+class ScheduleState(StatesGroup):
+    weekdays: State = State()
+    time: State = State()
+
+
+async def start_schedule_filter(call: types.CallbackQuery):
+    msg = "Сконфигурируйте расписание самостоятельно или\n " \
+          "используйте параметры по умолчанию\n\n" \
+          "(уведомления будут приходить с понедельника по пятницу)"
+    await call.bot.send_message(
+        call.message.chat.id,
+        msg,
+        reply_markup=start_schedule_keyboard
+    )
+    await ScheduleState.weekdays.set()
+
+
+async def get_weekdays(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    if callback_data.get("filter", "0") == "1":
+        await call.bot.send_message(
+            call.message.chat.id,
+            text="Выберите день недели",
+            reply_markup=schedule_keyboard
+        )
+        await ScheduleState.weekdays.set()
+    else:
+        data = await state.get_data()
+        if not data.get("weekdays"):
+            await state.update_data({"weekdays": [0, 1, 2, 3, 4]})
+        await call.answer("Введите время в формате HH:MM")
+        await ScheduleState.next()
+
+
+async def get_time(message: types.Message, state: FSMContext):
+    try:
+        hours, minutes = (int(value) for value in message.text.split(":"))
+        time = timedelta(hours=hours, minutes=minutes)
+        assert timedelta(hours=0, minutes=0) <= time <= timedelta(hours=23, minutes=59)
+        await message.answer("Уведомление установлено!")
+        await state.finish()
+    except Exception as error:
+        print(error)
+        await message.answer("Введите время от 00:00 до 23:59")
+        await ScheduleState.time.set()
 
 
 async def start_subscribe_filter(call: types.CallbackQuery):
@@ -58,18 +112,7 @@ async def get_weight(message: types.Message, state: FSMContext):
         value = float(message.text)
         assert 20. <= value <= 220.
         await state.update_data(weight=value)
-        keyboard = types.InlineKeyboardMarkup(3).add(
-            types.InlineKeyboardButton("мужской", callback_data=gender_filter.new(
-                gender="male"
-            )),
-            types.InlineKeyboardButton("женский", callback_data=gender_filter.new(
-                gender="female"
-            )),
-            types.InlineKeyboardButton("другой", callback_data=gender_filter.new(
-                gender="helicopter"
-            )),
-        )
-        await message.answer("Выберите гендер 👨️/👩️/🚁️", reply_markup=keyboard)
+        await message.answer("Выберите гендер 👨️/👩️/🚁️", reply_markup=gender_keyboard)
         await SubscribeState.next()
     except Exception:
         await message.answer("Введите десятичное число от 20 до 220")
@@ -88,19 +131,11 @@ async def nutrition_filter_start(call: types.CallbackQuery):
     await get_nutritions(call.message)
 
 
-async def program_filter_start(call: types.CallbackQuery):
-    keyboard = types.InlineKeyboardMarkup(2).add(
-        types.InlineKeyboardButton("Да", callback_data=program_filter.new(
-            filter=1
-        )),
-        types.InlineKeyboardButton("Нет", callback_data=program_filter.new(
-            filter=0
-        )),
-    )
+async def start_program_filter(call: types.CallbackQuery):
     await call.bot.send_message(
         call.message.chat.id,
         "Включить в подборку фильтрацию?",
-        reply_markup=keyboard
+        reply_markup=start_program_keyboard
     )
     await ProgramFilter.difficulty_value.set()
 
@@ -119,18 +154,10 @@ async def get_difficulty_op(message: types.Message, state: FSMContext):
         value = float(message.text)
         assert 1 <= value <= 5
         await state.update_data(difficulty=message.text)
-        keyboard = types.InlineKeyboardMarkup(3).add(
-            types.InlineKeyboardButton("🔼️", callback_data=difficulty_filter.new(
-                difficulty=">"
-            )),
-            types.InlineKeyboardButton(f"{value}", callback_data=difficulty_filter.new(
-                difficulty="="
-            )),
-            types.InlineKeyboardButton("🔽️", callback_data=difficulty_filter.new(
-                difficulty="<"
-            ))
+        await message.answer(
+            "Введите операцию с числом",
+            reply_markup=create_op_keyboard("difficulty", value)
         )
-        await message.answer("Введите операцию с числом", reply_markup=keyboard)
         await ProgramFilter.next()
     except Exception:
         await message.answer("Введите десятичное число от 1 до 5")
@@ -149,18 +176,10 @@ async def get_weeks_op(message: types.Message, state: FSMContext):
         value = int(message.text)
         assert value > 0
         await state.update_data(weeks=message.text)
-        keyboard = types.InlineKeyboardMarkup(3).add(
-            types.InlineKeyboardButton(f"🔼️", callback_data=week_filter.new(
-                weeks=">"
-            )),
-            types.InlineKeyboardButton(f"{value}", callback_data=week_filter.new(
-                weeks="="
-            )),
-            types.InlineKeyboardButton("🔽️", callback_data=week_filter.new(
-                weeks="<"
-            ))
+        await message.answer(
+            "Введите операцию с числом",
+            reply_markup=create_op_keyboard("weeks", value)
         )
-        await message.answer("Введите операцию с числом", reply_markup=keyboard)
         await ProgramFilter.next()
     except Exception:
         await message.answer("Введите число больше 0")

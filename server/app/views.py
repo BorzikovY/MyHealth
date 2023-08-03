@@ -9,8 +9,7 @@ from rest_framework.status import (
     HTTP_204_NO_CONTENT,
     HTTP_400_BAD_REQUEST,
     HTTP_200_OK,
-    HTTP_201_CREATED,
-    HTTP_205_RESET_CONTENT
+    HTTP_201_CREATED
 )
 from rest_framework.response import Response
 
@@ -36,8 +35,7 @@ from app.serializers import (
     ProgramSerializer,
     NutritionSerializer,
     TrainingSerializer,
-    ExerciseSerializer,
-    SubscriberUpdateSerializer
+    ExerciseSerializer
 )
 
 
@@ -140,16 +138,9 @@ class SubscriberApi(generics.GenericAPIView, metaclass=RestApi):
     Subscriber api
     """
 
-    __methods__ = ["get", "post", "put", "delete"]
+    __methods__ = ["post", "delete"]
     serializer_class = SubscriberSerializer
-    update_serializer = SubscriberUpdateSerializer
     permission_classes = (SubscribePermission | AuthenticatedPost,)
-
-    def get_serializer(self, *args, **kwargs):
-        kwargs["context"] = self.get_serializer_context()
-        if kwargs["context"]["request"].method == "PUT":
-            return self.update_serializer(*args, **kwargs)
-        return self.serializer_class(*args, **kwargs)
 
 
 class ProgramApi(generics.GenericAPIView, metaclass=RestApi):

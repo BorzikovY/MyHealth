@@ -210,14 +210,13 @@ class Subscriber:
             gender_icon=self.gender_icon
         )
 
-    id: int
+    telegram_id: int
     age: int
     height: float
     weight: float
     training_program: int = None
     sport_nutrition: int = None
     gender: str = 'helicopter'
-    is_adult: bool = False
 
 
 @dataclass
@@ -255,16 +254,17 @@ class TelegramUser:
             last_name=self.last_name,
             balance=self.balance
         )
+        if self.subscriber:
+            self.subscriber = Subscriber(**self.subscriber)
 
     telegram_id: str
-    id: int = None
     chat_id: str = config.get("chat_id")
     access: str = ''
     refresh: str = ''
     first_name: str = ''
     last_name: str = ''
     balance: float = 0
-    subscriber: int = None
+    subscriber: Subscriber = None
 
     def access_data(self):
         return {

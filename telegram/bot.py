@@ -15,7 +15,7 @@ from handlers import (
     put_subscribe
 )
 from states import (
-    program_filter_start,
+    start_program_filter,
     get_difficulty_value,
     get_difficulty_op,
     get_weeks_value,
@@ -28,7 +28,9 @@ from states import (
     get_height,
     get_weight,
     get_gender,
-    start_subscribe_filter
+    start_subscribe_filter,
+    start_schedule_filter,
+    get_weekdays, ScheduleState, get_time
 )
 from keyboards import (
     del_filter,
@@ -38,7 +40,7 @@ from keyboards import (
     program,
     nutrition,
     gender_filter,
-    update_subscribe
+    update_subscribe, schedule_filter
 )
 from settings import config
 
@@ -72,7 +74,17 @@ dp.register_callback_query_handler(get_nutrition, nutrition.filter())
 dp.register_callback_query_handler(get_nutrition, text="nutrition")
 dp.register_callback_query_handler(subscribe, text="subscribe")
 dp.register_callback_query_handler(put_subscribe, update_subscribe.filter())
-dp.register_callback_query_handler(program_filter_start, text="filter_programs"),
+dp.register_callback_query_handler(start_program_filter, text="filter_programs"),
+dp.register_callback_query_handler(start_schedule_filter, text="filter_schedule")
+dp.register_callback_query_handler(
+    get_weekdays,
+    schedule_filter.filter(),
+    state=ScheduleState.weekdays
+)
+dp.register_message_handler(
+    get_time,
+    state=ScheduleState.time
+)
 dp.register_callback_query_handler(nutrition_filter_start, text="filter_nutritions")
 dp.register_callback_query_handler(
     get_difficulty_value,
@@ -96,9 +108,18 @@ dp.register_callback_query_handler(
     week_filter.filter(),
     state=ProgramFilter.finish_filter)
 dp.register_callback_query_handler(start_subscribe_filter, text="filter_subscribe")
-dp.register_message_handler(get_age, state=SubscribeState.age)
-dp.register_message_handler(get_height, state=SubscribeState.height)
-dp.register_message_handler(get_weight, state=SubscribeState.weight)
+dp.register_message_handler(
+    get_age,
+    state=SubscribeState.age
+)
+dp.register_message_handler(
+    get_height,
+    state=SubscribeState.height
+)
+dp.register_message_handler(
+    get_weight,
+    state=SubscribeState.weight
+)
 dp.register_callback_query_handler(
     get_gender,
     gender_filter.filter(),

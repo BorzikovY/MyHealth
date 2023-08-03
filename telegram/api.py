@@ -2,7 +2,7 @@ import os
 import json
 import asyncio
 import ssl
-from typing import List
+from typing import List, Callable
 
 import jwt
 
@@ -63,11 +63,25 @@ class BaseCacheHandler:
             setattr(self, attr, IOHandler(path))
 
 
+def format_data(func: Callable):
+    async def wrapper(self, data, *args, **kwargs):
+        return await func(self, self.from_json(data), *args, **kwargs)
+    return wrapper
+
+
+def set_formatter(cls):
+    attrs = [name for name in dir(cls) if name.startswith("update")]
+    for attr in attrs:
+        update = format_data(getattr(cls, attr))
+        setattr(cls, attr, update)
+    return cls
+
+
+@set_formatter
 class JsonCacheHandler(BaseCacheHandler):
     files = {
         "users": "users/{file}",
         "tokens": "tokens/{file}",
-        "subscribers": "subscribers/{file}",
         "programs": "programs/{file}",
         "nutritions": "nutritions/{file}",
         "trainings": "trainings/{file}"
@@ -78,7 +92,6 @@ class JsonCacheHandler(BaseCacheHandler):
         super().__init__()
         self.user_lock = asyncio.Lock()
         self.token_lock = asyncio.Lock()
-        self.subscriber_lock = asyncio.Lock()
 
     @staticmethod
     def to_json(data) -> str:
@@ -94,7 +107,7 @@ class JsonCacheHandler(BaseCacheHandler):
 
     async def get_programs(self, data: dict, _id: str) -> List[TrainingProgram]:
         if data.get(_id):
-            program = json.loads(await self.programs.get(f"{data[_id]}.{self.ext}"))
+            program = self.from_json(await self.programs.get(f"{data[_id]}.{self.ext}"))
             return TrainingProgram(**program) if program else None
 
         programs = [json.loads(content) for content in await self.programs.get_all()]
@@ -104,7 +117,7 @@ class JsonCacheHandler(BaseCacheHandler):
 
     async def get_nutritions(self, data: dict, _id: str) -> List[Nutrition]:
         if data.get(_id):
-            nutrition = json.loads(await self.nutritions.get(f"{data[_id]}.{self.ext}"))
+            nutrition = self.from_json(await self.nutritions.get(f"{data[_id]}.{self.ext}"))
             return Nutrition(**nutrition) if nutrition else None
 
         nutritions = [json.loads(content) for content in await self.nutritions.get_all()]
@@ -112,13 +125,13 @@ class JsonCacheHandler(BaseCacheHandler):
         return [Nutrition(**nutrition) for nutrition in nutritions] if nutritions else None
 
     async def get_trainings(self, data: dict, _id: str) -> List[Training]:
-        trainings = [json.loads(content) for content in await self.trainings.get_all()]
+        trainings = [self.from_json(content) for content in await self.trainings.get_all()]
 
         return [Training(**training) for training in trainings] if trainings else None
 
     async def get_user(self, data: dict, _id: str) -> TelegramUser:
         async with self.user_lock:
-            user = json.loads(await self.users.get(
+            user = self.from_json(await self.users.get(
                 f"{data.get(_id)}.{self.ext}"
             ))
 
@@ -126,62 +139,52 @@ class JsonCacheHandler(BaseCacheHandler):
 
     async def get_token(self, data: dict, _id: str) -> Token:
         async with self.token_lock:
-            token = json.loads(await self.tokens.get(
+            token = self.from_json(await self.tokens.get(
                 f"{data.get(_id)}.{self.ext}"
             ))
 
         return Token(**token) if token else None
 
-    async def get_subscriber(self, data: dict, _id: str) -> Subscriber:
-        async with self.subscriber_lock:
-            subscriber = json.loads(await self.subscribers.get(
-                f"{data.get(_id)}.{self.ext}"
-            ))
-
-        return Subscriber(**subscriber) if subscriber else None
-
-    async def update_programs(self, received: str, _id: str):
-        formatted_data = json.loads(received)
+    async def update_programs(self, formatted_data: dict, _id: str):
         async with program_lock:
             tasks = []
             for data in formatted_data:
                 tasks.append(self.programs.post(json.dumps(data), f"{data.get(_id)}.{self.ext}"))
             await asyncio.gather(*tasks)
 
-    async def update_nutritions(self, received: str, _id: str):
-        formatted_data = json.loads(received)
+    async def update_nutritions(self, formatted_data: dict, _id: str):
         async with nutrition_lock:
             tasks = []
             for data in formatted_data:
                 tasks.append(self.nutritions.post(json.dumps(data), f"{data.get(_id)}.{self.ext}"))
             await asyncio.gather(*tasks)
 
-    async def update_trainings(self, received: str, _id: str):
-        formatted_data = json.loads(received)
+    async def update_trainings(self, formatted_data: dict, _id: str):
         async with training_lock:
             tasks = []
             for data in formatted_data:
                 tasks.append(self.trainings.post(json.dumps(data), f"{data.get(_id)}.{self.ext}"))
             await asyncio.gather(*tasks)
 
-    async def update_token(self, received: str, _id: str) -> None:
-        formatted_data = json.loads(received)
+    async def update_token(self, formatted_data: dict, _id: str) -> None:
         payload = jwt.decode(
             formatted_data.get("access"),
             SECRET_KEY, algorithms=["HS256"]
         )
         async with self.token_lock:
-            await self.tokens.post(received, f"{payload.get(_id)}.{self.ext}")
+            await self.tokens.post(self.to_json(formatted_data), f"{payload.get(_id)}.{self.ext}")
 
-    async def update_user(self, received: str, _id: str) -> None:
-        formatted_data = json.loads(received)
+    async def update_subscriber(self, formatted_data: dict, _id: str):
+        existing_data = self.from_json(await self.users.get(
+            f"{formatted_data.get(_id)}.{self.ext}"
+        ))
+        existing_data.update({"subscriber": formatted_data})
         async with self.user_lock:
-            await self.users.post(received, f"{formatted_data.get(_id)}.{self.ext}")
+            await self.users.post(self.to_json(existing_data), f"{existing_data.get(_id)}.{self.ext}")
 
-    async def update_subscriber(self, received: str, _id: str) -> None:
-        formatted_data = json.loads(received)
-        async with self.subscriber_lock:
-            await self.subscribers.post(received, f"{formatted_data.get(_id)}.{self.ext}")
+    async def update_user(self, formatted_data: dict, _id: str) -> None:
+        async with self.user_lock:
+            await self.users.post(self.to_json(formatted_data), f"{formatted_data.get(_id)}.{self.ext}")
 
 
 async def auth_user(client, registered_user: TelegramUser):
@@ -427,45 +430,24 @@ class ApiClient:
             "post",
             201,
             Subscriber,
-            "id",
+            "telegram_id",
             self.handler.update_subscriber,
             data=json.dumps(token.post_data())
         )
 
     @check_token
-    async def update_subscriber(self, user: TelegramUser, token: Token, **kwargs) -> Subscriber:
-        url = f"{self.base_url}/api/subscribe/"
+    async def update_user(self, user: TelegramUser, token: Token, **kwargs) -> TelegramUser:
+        url = f"{self.base_url}/api/user/"
         headers = self.get_headers(token.access_data())
         return await self.send_request(
             url,
             headers,
             "put",
             200,
-            Subscriber,
-            "id",
-            self.handler.update_subscriber,
+            TelegramUser,
+            "telegram_id",
+            self.handler.update_user,
             data=json.dumps(kwargs.get("data", {}))
-        )
-
-    @check_token
-    async def get_subscriber(self, user: TelegramUser, token: Token, **kwargs) -> Subscriber:
-        if kwargs.get("cache"):
-            subscriber = await self.get_cache(
-                "id", kwargs.get("data"), self.handler.get_subscriber
-            )
-            if subscriber is not None:
-                return subscriber
-        url = f"{self.base_url}/api/subscribe/"
-        headers = self.get_headers(token.access_data())
-        return await self.send_request(
-            url,
-            headers,
-            "get",
-            200,
-            Subscriber,
-            "id",
-            self.handler.update_subscriber,
-            data=json.dumps(token.post_data())
         )
 
     @check_token

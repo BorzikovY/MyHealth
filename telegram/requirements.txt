@@ -10,6 +10,7 @@ cffi==1.15.1
 charset-normalizer==3.2.0
 cryptography==41.0.2
 frozenlist==1.4.0
+greenlet==2.0.2
 idna==3.4
 PyJWT==1.7.1
 magic-filter==1.0.11
@@ -17,4 +18,5 @@ multidict==6.0.4
 pycparser==2.21
 python-dotenv==1.0.0
 pytz==2023.3
+sqlalchemy==2.0.19
 yarl==1.9.2

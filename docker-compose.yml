@@ -13,11 +13,6 @@ services:
   backend:
     build: ./server
     command: sh -c "python manage.py makemigrations && python manage.py migrate && gunicorn --workers=4 --bind 0.0.0.0:8000 server.wsgi:application"
-    healthcheck:
-      test: [ "CMD", "curl --fail http://0.0.0.0:8000/ || exit 1" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
     volumes:
       - static_data:/usr/src/server/static
       - media_data:/usr/src/server/media

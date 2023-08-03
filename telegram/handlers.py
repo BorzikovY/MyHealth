@@ -11,6 +11,7 @@ from keyboards import (
     update_subscribe as subscribe_filter
 )
 from models import TelegramUser, Token, TrainingProgram, Nutrition, Training, Subscriber
+from notifications import scheduler
 
 
 async def send_welcome(message: types.Message):
@@ -70,14 +71,14 @@ async def update_subscribe(message: types.Message, data: dict):
     instance: TelegramUser = create_anonymous_user(message.chat)
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        subscriber = await client.update_subscriber(
+        user = await client.update_user(
             instance, token,
-            data=data
+            data={"subscriber": data}
         )
-        if isinstance(subscriber, Subscriber):
+        if isinstance(user, TelegramUser):
             await message.reply(data.get("message"))
         else:
-            await message.reply("Пополните баланс 😁️ \n/account")
+            await message.reply("Произошла ошибка")
     else:
         await message.answer("Введите /start, чтобы зарегистрироваться")
 
@@ -88,23 +89,19 @@ async def get_my_health(message: types.Message):
 
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        user: TelegramUser = await client.get_user(
-            instance, token, cache=True
-        )
-        subscriber = await client.get_subscriber(
-            user, token,
-            data={"telegram_id": user.subscriber},
-            cache=True
-        )
-        if isinstance(subscriber, Subscriber):
-            keyboard = types.InlineKeyboardMarkup(2).add(
+        user: TelegramUser = await client.get_user(instance, token, cache=True)
+        if subscriber := user.subscriber:
+            keyboard = types.InlineKeyboardMarkup(4).add(
                 types.InlineKeyboardButton("Посмотреть программу", callback_data=program_filter.new(
                     id=subscriber.training_program if subscriber.training_program else 0
                 )),
-                types.InlineKeyboardButton("Посмотреть спортивное питание", callback_data=nutrition_filter.new(
+                types.InlineKeyboardButton("Посмотреть питание", callback_data=nutrition_filter.new(
                     id=subscriber.sport_nutrition if subscriber.sport_nutrition else 0
-                )),
-                types.InlineKeyboardButton("Обновить данные", callback_data="filter_subscribe")
+                ))
+            )
+            keyboard.add(
+                types.InlineKeyboardButton("Обновить данные", callback_data="filter_subscribe"),
+                types.InlineKeyboardButton("Запустить уведомление", callback_data="filter_schedule")
             )
             await message.reply(
                 subscriber.message,
@@ -249,3 +246,10 @@ async def get_nutrition(call: types.CallbackQuery, callback_data: dict):
             await call.message.answer("Контента нет(")
     else:
         await call.message.answer("Введите /start, чтобы начать...")
+
+
+async def send_notification(message: types.Message):
+    await message.bot.send_message(
+        message.from_user.id,
+        "Пора тренироваться!"
+    )
