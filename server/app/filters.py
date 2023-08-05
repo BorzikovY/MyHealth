@@ -76,7 +76,18 @@ class TrainingFilterBackend(BaseFilterBackend):
         return [program_id, difficulty, approach_time]
 
 
-class ExerciseFilterBackend(BaseFilterBackend):
+class PortionFilterBackend(BaseFilterBackend):
+    def get_schema_fields(self, view):
+        nutrition_id = coreapi.Field(
+            name='nutrition_id',
+            location='query',
+            required=True,
+            type='string'
+        )
+        return [nutrition_id]
+
+
+class ApproachFilterBackend(BaseFilterBackend):
     def get_schema_fields(self, view):
         training_id = coreapi.Field(
             name='training_id',
@@ -84,7 +95,7 @@ class ExerciseFilterBackend(BaseFilterBackend):
             required=True,
             type='string'
         )
-        return [training_id,]
+        return [training_id]
 
 
 class DataFilter:

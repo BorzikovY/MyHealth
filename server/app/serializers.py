@@ -10,7 +10,8 @@ from rest_framework.serializers import (
     ModelSerializer,
     ValidationError as SerializerError,
     CharField,
-    Serializer
+    Serializer,
+    PrimaryKeyRelatedField
 )
 from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -23,7 +24,8 @@ from app.models import (
     Training,
     Portion,
     Exercise,
-    TrainingProgramGroup
+    TrainingProgramGroup,
+    Approach
 )
 
 
@@ -160,10 +162,24 @@ class UserSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin
         )
 
 
-class PortionSerializer(ModelSerializer):
+class PortionSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
     """
     Portion model serializer
     """
+
+    nutritions = PrimaryKeyRelatedField(many=True, read_only=True)
+
+    def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
+        if kwargs.get("portion_id") is not None:
+            self.portion_id = kwargs.pop("portion_id")
+        InitSerializerMixin.__init__(self, *args, **kwargs)
+
+    def get_instance(self, request):
+        if hasattr(self, "portion_id"):
+            query = Portion.objects.filter(id=self.portion_id)
+            return query.first()
+        return None
+
     class Meta:
         model = Portion
         fields = (
@@ -173,7 +189,8 @@ class PortionSerializer(ModelSerializer):
             "calories",
             "proteins",
             "fats",
-            "carbs"
+            "carbs",
+            "nutritions"
         )
         read_only_fields = fields
 
@@ -183,10 +200,8 @@ class NutritionSerializer(ModelSerializer, InstanceCreationMixin, InitSerializer
     Nutrition model serializer
     """
 
-    portions = PortionSerializer(many=True, read_only=True)
-
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
-        if kwargs.get("nutrition_id"):
+        if kwargs.get("nutrition_id") is not None:
             self.nutrition_id = kwargs.pop("nutrition_id")
         InitSerializerMixin.__init__(self, *args, **kwargs)
 
@@ -208,37 +223,53 @@ class NutritionSerializer(ModelSerializer, InstanceCreationMixin, InitSerializer
             "dosages",
             "use",
             "contraindications",
-            "portions"
         )
         read_only_fields = fields
 
 
-class ExerciseSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
+class ExerciseSerializer(ModelSerializer):
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Meta class"""
+
+        model = Exercise
+        fields = (
+            "name",
+            "description",
+            "image",
+            "video"
+        )
+        read_only_fields = fields
+
+
+class ApproachSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMixin):
     """
     Exercise model serializer
     """
 
+    exercise = ExerciseSerializer(read_only=True)
+
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
-        if kwargs.get("exercise_id"):
-            self.exercise_id = kwargs.pop("exercise_id")
+        if kwargs.get("approach_id") is not None:
+            self.approach_id = kwargs.pop("approach_id")
         InitSerializerMixin.__init__(self, *args, **kwargs)
 
     def get_instance(self, request):
-        if hasattr(self, "exercise_id"):
-            query = Exercise.objects.filter(id=self.exercise_id)
+        if hasattr(self, "approach_id"):
+            query = Approach.objects.filter(id=self.approach_id)
             return query.first()
         return None
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Meta class"""
 
-        model = Exercise
+        model = Approach
         fields = (
             "id",
-            "name",
-            "description",
-            "image",
-            "video"
+            "time",
+            "repetition_count",
+            "rest",
+            "training",
+            "exercise"
         )
         read_only_fields = fields
 
@@ -248,8 +279,10 @@ class TrainingSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerM
     Training model serializer
     """
 
+    programs = PrimaryKeyRelatedField(many=True, read_only=True)
+
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
-        if kwargs.get("training_id"):
+        if kwargs.get("training_id") is not None:
             self.training_id = kwargs.pop("training_id")
         InitSerializerMixin.__init__(self, *args, **kwargs)
 
@@ -269,7 +302,8 @@ class TrainingSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerM
             "description",
             "difficulty",
             "time",
-            "approach_count"
+            "approach_count",
+            "programs"
         )
         read_only_fields = fields
 
@@ -280,7 +314,6 @@ class ProgramGroupSerializer(ModelSerializer):
 
         model = TrainingProgramGroup
         fields = (
-            "id",
             "name",
             "description"
         )
@@ -292,10 +325,9 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
     Program model serializer
     """
     group = ProgramGroupSerializer(read_only=True)
-    trainings = TrainingSerializer(read_only=True, many=True)
 
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
-        if kwargs.get("program_id"):
+        if kwargs.get("program_id") is not None:
             self.program_id = kwargs.pop("program_id")
         InitSerializerMixin.__init__(self, *args, **kwargs)
 
@@ -319,8 +351,7 @@ class ProgramSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
             "avg_training_time",
             "training_count",
             "difficulty",
-            "group",
-            "trainings"
+            "group"
         )
         read_only_fields = fields
 

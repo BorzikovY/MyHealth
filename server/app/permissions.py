@@ -60,3 +60,11 @@ class SubscribePermission(BasePermission):
 
     def has_permission(self, request, view) -> bool:
         return hasattr(request.user, "subscriber")
+
+
+class OwnerPermission(SubscribePermission):
+    """Permission for accessing business content"""
+
+    def has_object_permission(self, request, view, obj):
+        subscriber = request.user.training
+        return obj.training == subscriber.training

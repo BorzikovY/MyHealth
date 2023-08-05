@@ -2,12 +2,14 @@ from aiogram import types
 
 from aiogram.utils.callback_data import CallbackData
 
+from models import TrainingProgram, Nutrition
 
-del_filter = CallbackData("delete", "messages")
+
+move = CallbackData("move", "direction")
 program = CallbackData("program", "id")
 nutrition = CallbackData("nutrition", "id")
-update_subscribe = CallbackData("subscribe", "training_program", "sport_nutrition")
-program_filter = CallbackData("program_filter", "filter")
+buy = CallbackData("buy", "training_program", "sport_nutrition")
+_filter = CallbackData("filter", "filter")
 schedule_filter = CallbackData("schedule_filter", "filter", "weekday")
 difficulty_filter = CallbackData("difficulty_filter", "difficulty")
 week_filter = CallbackData("week_filter", "weeks")
@@ -18,21 +20,6 @@ op_filters = {
     "difficulty": difficulty_filter,
     "weeks": week_filter
 }
-
-
-def create_filter_keyboard(callback_data: str = None, messages=None):
-    buttons = []
-    if callback_data:
-        buttons.append(
-            types.InlineKeyboardButton(text="Обновить запрос", callback_data=callback_data)
-        )
-    if messages:
-        buttons.append(
-            types.InlineKeyboardButton("Удалить все", callback_data=del_filter.new(
-                messages=messages
-            ))
-        )
-    return types.InlineKeyboardMarkup(2).add(*buttons)
 
 
 def create_op_keyboard(param: str, value):
@@ -50,16 +37,69 @@ def create_op_keyboard(param: str, value):
         )
 
 
-start_keyboard = types.InlineKeyboardMarkup(2).add(
-    types.InlineKeyboardButton(text="Подписаться 🎁", callback_data="subscribe"),
-    types.InlineKeyboardButton(text="Я только посмотреть 😏️", callback_data="filter_programs")
+def create_content_keyboard(content: TrainingProgram | Nutrition, **kwargs):
+    if kwargs.get("sport_nutrition"):
+        filter_obj = nutrition
+    elif kwargs.get("training_program"):
+        filter_obj = program
+    else:
+        raise ValueError("You must provide either sport_nutrition or training_program")
+    keyboard = types.InlineKeyboardMarkup(4).add(
+        types.InlineKeyboardButton(
+            f"{content.price} руб 💰️" if content.price > 0. else "Получить бесплатно ✅️",
+            callback_data=buy.new(
+                sport_nutrition=kwargs.get("sport_nutrition", "none"),
+                training_program=kwargs.get("training_program", "none")
+            )
+        ),
+        types.InlineKeyboardButton(
+            text="Подробнее...",
+            callback_data=filter_obj.new(
+                id=content.id
+            )
+        )
+    )
+    keyboard.add(
+        types.InlineKeyboardButton("◀️", callback_data=move.new(direction=-1)),
+        types.InlineKeyboardButton("Закрыть", callback_data='quit_programs'),
+        types.InlineKeyboardButton("▶️", callback_data=move.new(direction=1))
+    )
+    return keyboard
+
+
+def create_my_health_keyboard(**kwargs):
+    keyboard = types.InlineKeyboardMarkup(4).add(
+        types.InlineKeyboardButton("Посмотреть программу", callback_data=program.new(
+            id=kwargs.get("training_program")
+        )),
+        types.InlineKeyboardButton("Посмотреть питание", callback_data=nutrition.new(
+            id=kwargs.get("sport_nutrition")
+        ))
+    )
+    keyboard.add(
+        types.InlineKeyboardButton("Обновить данные", callback_data="update_subscribe"),
+        types.InlineKeyboardButton("Запустить уведомление", callback_data="filter_schedule")
+    )
+    return keyboard
+
+
+start_keyboard = types.ReplyKeyboardMarkup(3, one_time_keyboard=False).add(
+    types.KeyboardButton(text="/subscribe Подписаться 🎁", callback_data="subscribe"),
+    types.KeyboardButton(text="/my_health Мое здоровье 🫀️", callback_data="filter_programs"),
+    types.KeyboardButton(text="/account Мои данные 📃️")
 )
 
-start_program_keyboard = types.InlineKeyboardMarkup(2).add(
-    types.InlineKeyboardButton("Да", callback_data=program_filter.new(
+start_keyboard.add(
+    types.KeyboardButton(text="/programs Тренировочные программы 🎽"),
+    types.KeyboardButton(text="/nutritions Спортивное питание 🥑"),
+)
+
+
+filter_keyboard = types.InlineKeyboardMarkup(2).add(
+    types.InlineKeyboardButton("Да", callback_data=_filter.new(
         filter=1
     )),
-    types.InlineKeyboardButton("Нет", callback_data=program_filter.new(
+    types.InlineKeyboardButton("Нет", callback_data=_filter.new(
         filter=0
     )),
 )

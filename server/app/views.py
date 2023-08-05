@@ -17,16 +17,18 @@ from app.filters import (
     ProgramFilterBackend,
     NutritionFilterBackend,
     TrainingFilterBackend,
-    ExerciseFilterBackend,
+    ApproachFilterBackend,
+    PortionFilterBackend,
     duration,
     DataFilter,
 )
-from app.models import TrainingProgram, SportNutrition, Training, Exercise
+from app.models import TrainingProgram, SportNutrition, Training, Approach, Portion
 from app.permissions import (
     UnauthenticatedPost,
     AuthenticatedPost,
     SubscribePermission,
-    GroupPermission
+    GroupPermission,
+    OwnerPermission
 )
 from app.serializers import (
     UserSerializer,
@@ -35,7 +37,8 @@ from app.serializers import (
     ProgramSerializer,
     NutritionSerializer,
     TrainingSerializer,
-    ExerciseSerializer
+    ApproachSerializer,
+    PortionSerializer
 )
 
 
@@ -148,7 +151,7 @@ class ProgramApi(generics.GenericAPIView, metaclass=RestApi):
     Program api
     """
 
-    __methods__ = ["get", "post"]
+    __methods__ = ["get"]
     serializer_class = ProgramSerializer
     permission_classes = (SubscribePermission,)
 
@@ -158,7 +161,7 @@ class NutritionApi(generics.GenericAPIView, metaclass=RestApi):
     Nutrition api
     """
 
-    __methods__ = ["get", "post"]
+    __methods__ = ["get"]
     serializer_class = NutritionSerializer
     permission_classes = (SubscribePermission,)
 
@@ -173,13 +176,23 @@ class TrainingApi(generics.GenericAPIView, metaclass=RestApi):
     permission_classes = (SubscribePermission,)
 
 
-class ExerciseApi(generics.GenericAPIView, metaclass=RestApi):
+class ApproachApi(generics.GenericAPIView, metaclass=RestApi):
     """
-    Exercise api
+    Approach api
     """
 
     __methods__ = ["get"]
-    serializer_class = ExerciseSerializer
+    serializer_class = ApproachSerializer
+    permission_classes = (OwnerPermission,)
+
+
+class PortionApi(generics.GenericAPIView, metaclass=RestApi):
+    """
+    Portion api
+    """
+
+    __methods__ = ["get"]
+    serializer_class = ApproachSerializer
     permission_classes = (SubscribePermission,)
 
 
@@ -271,16 +284,30 @@ class TrainingListApi(viewsets.ModelViewSet):
         return queryset
 
 
-class ExerciseListApi(viewsets.ModelViewSet):
-    serializer_class = ExerciseSerializer
-    filter_backends = (ExerciseFilterBackend,)
+class PortionListApi(viewsets.ModelViewSet):
+    serializer_class = PortionSerializer
+    filter_backends = (PortionFilterBackend,)
     permission_classes = (GroupPermission(groups=["Staff"]),)
-    queryset = Exercise.objects.all()
+    queryset = Portion.objects.all()
+
+    def filter_queryset(self, queryset):
+        nutrition_id = self.request.query_params.get('nutrition_id')
+        queryset = Portion.objects.filter(
+            training=SportNutrition.objects.filter(id=nutrition_id).first()
+        )
+        return queryset
+
+
+class ApproachListApi(viewsets.ModelViewSet):
+    serializer_class = ApproachSerializer
+    filter_backends = (ApproachFilterBackend,)
+    permission_classes = (OwnerPermission,)
+    queryset = Approach.objects.all()
 
     def filter_queryset(self, queryset):
         training_id = self.request.query_params.get('training_id')
-        queryset = Exercise.objects.filter(
-            approach_set__training=Training.objects.filter(id=training_id)[:1]
+        queryset = Approach.objects.filter(
+            training=Training.objects.filter(id=training_id).first()
         )
 
         return queryset

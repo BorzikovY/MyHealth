@@ -1,25 +1,32 @@
 from datetime import timedelta
+from typing import List
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
-from handlers import get_programs, get_nutritions, update_subscribe
+from api import get_programs, get_nutritions, update_subscribe
 from keyboards import (
     schedule_keyboard,
     start_schedule_keyboard,
     gender_keyboard,
-    start_program_keyboard,
-    create_op_keyboard
+    create_op_keyboard,
+    create_content_keyboard
 )
 
 
-class ProgramFilter(StatesGroup):
+class ProgramState(StatesGroup):
+    program_filter: State = State()
     difficulty_value: State = State()
     difficulty_op: State = State()
     weeks_value: State = State()
     weeks_op: State = State()
-    finish_filter: State = State()
+    next_program: State = State()
+
+
+class NutritionState(StatesGroup):
+    nutrition_filter: State = State()
+    next_nutrition: State = State()
 
 
 class SubscribeState(StatesGroup):
@@ -32,6 +39,20 @@ class SubscribeState(StatesGroup):
 class ScheduleState(StatesGroup):
     weekdays: State = State()
     time: State = State()
+
+
+class Cycle:
+
+    def __init__(self, iterable: List):
+        self.loop = iterable
+
+    def __iter__(self):
+        self._count = 0
+        return self
+
+    def __next__(self, direction: int):
+        self._count = (self._count + direction) % len(self.loop)
+        return self.loop[self._count]
 
 
 async def start_schedule_filter(call: types.CallbackQuery):
@@ -75,14 +96,6 @@ async def get_time(message: types.Message, state: FSMContext):
         await ScheduleState.time.set()
 
 
-async def start_subscribe_filter(call: types.CallbackQuery):
-    await call.bot.send_message(
-        call.message.chat.id,
-        "Введите возраст 👶️-🧓️",
-    )
-    await SubscribeState.age.set()
-
-
 async def get_age(message: types.Message, state: FSMContext):
     try:
         value = int(message.text)
@@ -93,6 +106,10 @@ async def get_age(message: types.Message, state: FSMContext):
     except Exception:
         await message.answer("Введите целое число от 0 до 100")
         await SubscribeState.height.set()
+    await message.bot.delete_message(
+        message.from_user.id, message.message_id - 1
+    )
+    await message.delete()
 
 
 async def get_height(message: types.Message, state: FSMContext):
@@ -105,6 +122,10 @@ async def get_height(message: types.Message, state: FSMContext):
     except Exception:
         await message.answer("Введите десятичное число от 1 до 3")
         await SubscribeState.height.set()
+    await message.bot.delete_message(
+        message.from_user.id, message.message_id - 1
+    )
+    await message.delete()
 
 
 async def get_weight(message: types.Message, state: FSMContext):
@@ -117,77 +138,119 @@ async def get_weight(message: types.Message, state: FSMContext):
     except Exception:
         await message.answer("Введите десятичное число от 20 до 220")
         await SubscribeState.weight.set()
+    await message.bot.delete_message(
+        message.from_user.id, message.message_id - 1
+    )
+    await message.delete()
 
 
 async def get_gender(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     data = await state.get_data()
     data["gender"] = callback_data.get("gender")
-    data["message"] = "Данные успешно обновлены! 😉️"
-    await update_subscribe(call.message, data)
+    if await update_subscribe(call.from_user, data):
+        await call.message.edit_text("Данные были успешно обновлены!")
+    else:
+        await call.message.edit_text("Что-то пошло не так")
     await state.finish()
 
 
-async def nutrition_filter_start(call: types.CallbackQuery):
-    await get_nutritions(call.message)
-
-
-async def start_program_filter(call: types.CallbackQuery):
-    await call.bot.send_message(
-        call.message.chat.id,
-        "Включить в подборку фильтрацию?",
-        reply_markup=start_program_keyboard
+async def send_nutritions(message: types.Message, state: FSMContext, direction: int = 1):
+    nutritions = (await state.get_data()).get("nutritions", [])
+    nutrition = nutritions.__next__(direction)
+    await message.edit_text(nutrition.message_short, parse_mode="HTML")
+    await message.edit_reply_markup(
+        create_content_keyboard(nutrition, sport_nutrition=nutrition.id)
     )
-    await ProgramFilter.difficulty_value.set()
+    await state.update_data({"nutritions": nutritions})
+    await NutritionState.next_nutrition.set()
 
 
-async def get_difficulty_value(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+async def get_nutrition_filter(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.update_data({"nutritions": iter(Cycle(
+        await get_nutritions()
+    ))})
+    await send_nutritions(call.message, state)
+
+
+async def get_next_nutrition(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    direction = int(callback_data.get("direction"))
+    await send_nutritions(call.message, state, direction)
+
+
+async def send_programs(message: types.Message, state: FSMContext, direction: int = 1):
+    programs = (await state.get_data()).get("programs", [])
+    program = programs.__next__(direction)
+    await message.edit_text(program.message_short, parse_mode="HTML")
+    await message.edit_reply_markup(
+        create_content_keyboard(program, training_program=program.id)
+    )
+    await state.update_data({"programs": programs})
+    await ProgramState.next_program.set()
+
+
+async def get_program_filter(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     if callback_data.get("filter", "0") == "1":
-        await call.answer("Введите уровень сложности (от 1.00 до 5.00)")
-        await ProgramFilter.next()
+        await call.message.edit_text("Введите уровень сложности (от 1.00 до 5.00)")
+        await ProgramState.next()
     else:
-        await get_programs(call.message)
-        await state.finish()
+        await state.update_data({"programs": iter(Cycle(await get_programs()))})
+        await send_programs(call.message, state)
 
 
-async def get_difficulty_op(message: types.Message, state: FSMContext):
+async def get_difficulty_value(message: types.Message, state: FSMContext):
     try:
         value = float(message.text)
         assert 1 <= value <= 5
         await state.update_data(difficulty=message.text)
-        await message.answer(
+        await message.bot.send_message(
+            message.from_user.id,
             "Введите операцию с числом",
             reply_markup=create_op_keyboard("difficulty", value)
         )
-        await ProgramFilter.next()
-    except Exception:
+        await ProgramState.next()
+    except (AssertionError, ValueError) as valid_error:
         await message.answer("Введите десятичное число от 1 до 5")
-        await ProgramFilter.difficulty_op.set()
+        await ProgramState.difficulty_op.set()
+    await message.bot.delete_message(
+        message.from_user.id, message.message_id - 1
+    )
+    await message.delete()
 
 
-async def get_weeks_value(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+async def get_difficulty_op(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     data = await state.get_data()
     await state.update_data(difficulty=callback_data.get("difficulty") + data.get("difficulty"))
-    await call.answer("Введите количество недель")
-    await ProgramFilter.next()
+    await call.message.edit_text("Введите количество недель")
+    await ProgramState.next()
 
 
-async def get_weeks_op(message: types.Message, state: FSMContext):
+async def get_weeks_value(message: types.Message, state: FSMContext):
     try:
         value = int(message.text)
         assert value > 0
         await state.update_data(weeks=message.text)
-        await message.answer(
+        await message.bot.send_message(
+            message.from_user.id,
             "Введите операцию с числом",
             reply_markup=create_op_keyboard("weeks", value)
         )
-        await ProgramFilter.next()
-    except Exception:
+        await ProgramState.next()
+    except (AssertionError, ValueError) as valid_error:
         await message.answer("Введите число больше 0")
-        await ProgramFilter.weeks_op.set()
+        await ProgramState.weeks_op.set()
+    await message.bot.delete_message(
+        message.from_user.id, message.message_id - 1
+    )
+    await message.delete()
 
 
-async def finish_program_filter(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+async def get_weeks_op(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     data = await state.get_data()
     data["weeks"] = callback_data.get("weeks") + data.get("weeks")
-    await get_programs(call.message, data)
-    await state.finish()
+    await state.update_data({"programs": iter(Cycle(await get_programs(data)))})
+    await send_programs(call.message, state)
+
+
+async def get_next_program(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    direction = int(callback_data.get("direction"))
+    await send_programs(call.message, state, direction)

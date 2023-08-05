@@ -71,7 +71,6 @@ class Portion:
             description=self.description
         )
 
-    id: int
     name: str
     description: str
     calories: int
@@ -108,11 +107,20 @@ class Nutrition:
 
 @dataclass
 class Exercise:
-    id: int
     name: str
     description: str
     image: str
     video: str
+
+
+@dataclass
+class Approach:
+    id: int
+    time: timedelta
+    repetition_count: int
+    rest: timedelta
+    training: int
+    exercise: Exercise
 
 
 @dataclass
@@ -133,12 +141,16 @@ class Training:
             description=self.description
         )
 
+    def filter(self, data: dict):
+        return data.get("program_id") in self.programs
+
     id: str
     name: str
     description: str
     difficulty: int
     time: str
     approach_count: int
+    programs: List[int]
 
 
 @dataclass
@@ -158,9 +170,6 @@ class TrainingProgram:
             avg_training_time=avg_training_time,
             description=self.description
         )
-        self.message = f"\n{'_'*50}\n".join(
-            ["<b>Доступные тренировки</b>"] + [Training(**training).message for training in self.trainings]
-        )
 
     def filter(self, data: dict):
         first_filter = DataFilter.filter(data.get("difficulty"), data_class=float)
@@ -174,7 +183,6 @@ class TrainingProgram:
     weeks: int
     price: float
     group: TrainingProgramGroup
-    trainings: Training
     avg_training_time: timedelta
     training_count: int
     difficulty: float

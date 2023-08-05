@@ -1,46 +1,42 @@
-import aiogram.utils.exceptions
-
 from api import ApiClient
 
 from handlers import (
-    send_welcome,
-    get_account_info,
+    start,
+    account,
     subscribe,
-    get_programs,
-    get_nutritions,
-    get_program,
-    get_nutrition,
-    get_my_health,
-    create_subscribe,
-    put_subscribe
+    programs,
+    nutritions,
+    my_health,
+    update_subscribe
 )
 from states import (
-    start_program_filter,
+    ProgramState,
+    get_program_filter,
     get_difficulty_value,
     get_difficulty_op,
     get_weeks_value,
     get_weeks_op,
-    finish_program_filter,
-    ProgramFilter,
+    get_next_program,
     SubscribeState,
-    nutrition_filter_start,
     get_age,
     get_height,
     get_weight,
     get_gender,
-    start_subscribe_filter,
+    ScheduleState,
     start_schedule_filter,
-    get_weekdays, ScheduleState, get_time
+    get_weekdays,
+    get_time,
+    NutritionState,
+    get_nutrition_filter,
+    get_next_nutrition
 )
 from keyboards import (
-    del_filter,
-    program_filter,
+    move,
+    _filter,
     week_filter,
     difficulty_filter,
-    program,
-    nutrition,
     gender_filter,
-    update_subscribe, schedule_filter
+    schedule_filter
 )
 from settings import config
 
@@ -53,28 +49,21 @@ storage = MemoryStorage()
 dp = Dispatcher(tg, storage=storage)
 
 
-@dp.callback_query_handler(del_filter.filter())
-async def delete_messages(call: types.CallbackQuery, callback_data: dict):
-    current_id, messages = int(call.message.message_id) - 1, int(callback_data.get("messages"))
-    for _id in range(current_id, current_id-messages, -1):
-        try:
-            await tg.delete_message(call.message.chat.id, _id)
-        except aiogram.utils.exceptions.MessageToDeleteNotFound:
-            pass
+@dp.callback_query_handler(text="quit_programs", state="*")
+async def delete_messages(call: types.CallbackQuery, state):
+    await call.message.delete()
+    msg = "Надеюсь, что вы нашли то, что искали"
+    await call.bot.send_message(call.from_user.id, msg)
+    await state.finish()
 
 
-dp.register_message_handler(send_welcome, commands=["start"])
-dp.register_message_handler(create_subscribe, commands=["subscribe"])
-dp.register_message_handler(get_account_info, commands=["account"])
-dp.register_message_handler(get_programs, commands=["programs"])
-dp.register_message_handler(get_nutritions, commands=["nutritions"])
-dp.register_message_handler(get_my_health, commands=["my_health"])
-dp.register_callback_query_handler(get_program, program.filter())
-dp.register_callback_query_handler(get_nutrition, nutrition.filter())
-dp.register_callback_query_handler(get_nutrition, text="nutrition")
-dp.register_callback_query_handler(subscribe, text="subscribe")
-dp.register_callback_query_handler(put_subscribe, update_subscribe.filter())
-dp.register_callback_query_handler(start_program_filter, text="filter_programs"),
+dp.register_message_handler(start, commands=["start"], state="*")
+dp.register_message_handler(programs, commands=["programs"], state="*")
+dp.register_message_handler(subscribe, commands=["subscribe"], state="*")
+dp.register_message_handler(account, commands=["account"], state="*")
+dp.register_message_handler(nutritions, commands=["nutritions"], state="*")
+dp.register_message_handler(my_health, commands=["my_health"], state="*")
+dp.register_callback_query_handler(update_subscribe, text="update_subscribe", state="*")
 dp.register_callback_query_handler(start_schedule_filter, text="filter_schedule")
 dp.register_callback_query_handler(
     get_weekdays,
@@ -85,29 +74,53 @@ dp.register_message_handler(
     get_time,
     state=ScheduleState.time
 )
-dp.register_callback_query_handler(nutrition_filter_start, text="filter_nutritions")
+
+"""Register Training Program states"""
+
 dp.register_callback_query_handler(
+    get_program_filter,
+    _filter.filter(),
+    state=ProgramState.program_filter
+)
+dp.register_message_handler(
     get_difficulty_value,
-    program_filter.filter(),
-    state=ProgramFilter.difficulty_value
+    state=ProgramState.difficulty_value
 )
-dp.register_message_handler(
+dp.register_callback_query_handler(
     get_difficulty_op,
-    state=ProgramFilter.difficulty_op
-)
-dp.register_callback_query_handler(
-    get_weeks_value,
     difficulty_filter.filter(),
-    state=ProgramFilter.weeks_value)
+    state=ProgramState.difficulty_op
+)
 dp.register_message_handler(
-    get_weeks_op,
-    state=ProgramFilter.weeks_op
+    get_weeks_value,
+    state=ProgramState.weeks_value
 )
 dp.register_callback_query_handler(
-    finish_program_filter,
+    get_weeks_op,
     week_filter.filter(),
-    state=ProgramFilter.finish_filter)
-dp.register_callback_query_handler(start_subscribe_filter, text="filter_subscribe")
+    state=ProgramState.weeks_op
+)
+dp.register_callback_query_handler(
+    get_next_program,
+    move.filter(),
+    state=ProgramState.next_program
+)
+
+"""Register Sport Nutrition states"""
+
+dp.register_callback_query_handler(
+    get_nutrition_filter,
+    _filter.filter(),
+    state=NutritionState.nutrition_filter
+)
+dp.register_callback_query_handler(
+    get_next_nutrition,
+    move.filter(),
+    state=NutritionState.next_nutrition
+)
+
+"""Update Subscriber info"""
+
 dp.register_message_handler(
     get_age,
     state=SubscribeState.age
