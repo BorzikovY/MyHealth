@@ -1,4 +1,4 @@
-from api import ApiClient
+from api import ApiClient, Telegram
 
 from handlers import (
     start,
@@ -7,8 +7,14 @@ from handlers import (
     programs,
     nutritions,
     my_health,
-    update_subscribe
+    update_my_health,
+    buy_content,
+    program,
+    nutrition,
+    schedule,
+    approaches
 )
+from notifications import scheduler
 from states import (
     ProgramState,
     get_program_filter,
@@ -17,18 +23,21 @@ from states import (
     get_weeks_value,
     get_weeks_op,
     get_next_program,
+    get_next_training,
     SubscribeState,
     get_age,
     get_height,
     get_weight,
     get_gender,
     ScheduleState,
-    start_schedule_filter,
     get_weekdays,
     get_time,
     NutritionState,
     get_nutrition_filter,
-    get_next_nutrition
+    get_next_nutrition,
+    get_next_portion,
+    ApproachState,
+    get_next_approach
 )
 from keyboards import (
     move,
@@ -36,20 +45,22 @@ from keyboards import (
     week_filter,
     difficulty_filter,
     gender_filter,
-    schedule_filter
+    schedule_filter,
+    buy,
+    program_filter,
+    nutrition_filter,
+    notification
 )
-from settings import config
 
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 
-tg = Bot(token=config.get("bot_token"))
 storage = MemoryStorage()
-dp = Dispatcher(tg, storage=storage)
+dp = Dispatcher(Telegram, storage=storage)
 
 
-@dp.callback_query_handler(text="quit_programs", state="*")
+@dp.callback_query_handler(text="quit_content", state="*")
 async def delete_messages(call: types.CallbackQuery, state):
     await call.message.delete()
     msg = "Надеюсь, что вы нашли то, что искали"
@@ -63,8 +74,15 @@ dp.register_message_handler(subscribe, commands=["subscribe"], state="*")
 dp.register_message_handler(account, commands=["account"], state="*")
 dp.register_message_handler(nutritions, commands=["nutritions"], state="*")
 dp.register_message_handler(my_health, commands=["my_health"], state="*")
-dp.register_callback_query_handler(update_subscribe, text="update_subscribe", state="*")
-dp.register_callback_query_handler(start_schedule_filter, text="filter_schedule")
+dp.register_message_handler(approaches, commands=["approaches"], state="*")
+dp.register_callback_query_handler(update_my_health, text="update_subscribe", state="*"),
+dp.register_callback_query_handler(buy_content, buy.filter(), state="*")
+dp.register_callback_query_handler(program, program_filter.filter(), state="*")
+dp.register_callback_query_handler(nutrition, nutrition_filter.filter(), state="*")
+dp.register_callback_query_handler(schedule, notification.filter(), state="*")
+
+"""Register Schedule states"""
+
 dp.register_callback_query_handler(
     get_weekdays,
     schedule_filter.filter(),
@@ -106,6 +124,13 @@ dp.register_callback_query_handler(
     state=ProgramState.next_program
 )
 
+dp.register_callback_query_handler(
+    get_next_training,
+    move.filter(),
+    state=ProgramState.next_training
+)
+
+
 """Register Sport Nutrition states"""
 
 dp.register_callback_query_handler(
@@ -119,7 +144,21 @@ dp.register_callback_query_handler(
     state=NutritionState.next_nutrition
 )
 
-"""Update Subscriber info"""
+dp.register_callback_query_handler(
+    get_next_portion,
+    move.filter(),
+    state=NutritionState.next_portion
+)
+
+"""Register Approach states"""
+
+dp.register_callback_query_handler(
+    get_next_approach,
+    move.filter(),
+    state=ApproachState.next_approach
+)
+
+"""Register update Subscriber states"""
 
 dp.register_message_handler(
     get_age,
@@ -141,6 +180,7 @@ dp.register_callback_query_handler(
 
 
 if __name__ == '__main__':
+    scheduler.start()
     executor.start_polling(
         dp,
         skip_updates=True,

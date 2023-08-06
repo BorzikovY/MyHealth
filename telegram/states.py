@@ -5,14 +5,23 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
-from api import get_programs, get_nutritions, update_subscribe
+from api import (
+    Telegram,
+    get_programs,
+    get_nutritions,
+    update_subscribe,
+    get_trainings,
+    get_portions
+)
 from keyboards import (
     schedule_keyboard,
-    start_schedule_keyboard,
     gender_keyboard,
     create_op_keyboard,
-    create_content_keyboard
+    create_content_keyboard,
+    create_move_keyboard,
+    move_buttons
 )
+from notifications import scheduler
 
 
 class ProgramState(StatesGroup):
@@ -22,11 +31,17 @@ class ProgramState(StatesGroup):
     weeks_value: State = State()
     weeks_op: State = State()
     next_program: State = State()
+    next_training: State = State()
 
 
 class NutritionState(StatesGroup):
     nutrition_filter: State = State()
     next_nutrition: State = State()
+    next_portion: State = State()
+
+
+class ApproachState(StatesGroup):
+    next_approach: State = State()
 
 
 class SubscribeState(StatesGroup):
@@ -51,35 +66,102 @@ class Cycle:
         return self
 
     def __next__(self, direction: int):
-        self._count = (self._count + direction) % len(self.loop)
-        return self.loop[self._count]
+        try:
+            self._count = (self._count + direction) % len(self.loop)
+            return self.loop[self._count]
+        except ZeroDivisionError:
+            raise ValueError("No content")
 
 
-async def start_schedule_filter(call: types.CallbackQuery):
-    msg = "Сконфигурируйте расписание самостоятельно или\n " \
-          "используйте параметры по умолчанию\n\n" \
-          "(уведомления будут приходить с понедельника по пятницу)"
-    await call.bot.send_message(
-        call.message.chat.id,
-        msg,
-        reply_markup=start_schedule_keyboard
+class Iterable:
+
+    def __init__(self, iterable: List):
+        self.loop = iterable
+
+    def __iter__(self):
+        self._count = -1
+        self.current = 0
+        return self
+
+    def __next__(self):
+        try:
+            self._count += 1
+            self.current = self.loop[self._count]
+            return self.current
+        except IndexError:
+            raise StopIteration("No content")
+
+
+async def send_approach(call: types.CallbackQuery, state: FSMContext, direction: int = 1):
+    approaches = (await state.get_data()).get("approaches", [])
+    approach = approaches.__next__(direction)
+    await call.message.edit_text(approach.message, parse_mode="HTML")
+    await call.message.edit_reply_markup(
+        types.InlineKeyboardMarkup().add(
+            *move_buttons
+        )
     )
-    await ScheduleState.weekdays.set()
+    await state.update_data({"approaches": approaches})
+    await ApproachState.next_approach.set()
+
+
+async def get_next_approach(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    direction = int(callback_data.get("direction"))
+    await send_approach(call, state, direction)
+
+
+async def send_notification(chat_id, trainings):
+    try:
+        trainings.__next__()
+        job = scheduler.get_job(str(chat_id))
+        job.modify(kwargs={"chat_id": chat_id, "trainings": trainings})
+        await Telegram.send_message(
+            chat_id,
+            "Пора тренироваться! Введите /approaches, чтобы просмотреть список упражнений"
+        )
+    except StopIteration:
+        scheduler.remove_job(str(chat_id))
+        await Telegram.send_message(
+            chat_id,
+            "Вы успешно закончили тренировочную программу!"
+        )
+
+
+async def set_notification(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    trainings = iter(Iterable([
+        training.id for training in await get_trainings(
+            {"program_id": data.get("program_id", 0)}
+        )
+    ]))
+    scheduler.add_job(
+        send_notification,
+        trigger="cron",
+        kwargs={"chat_id": message.from_user.id, "trainings": trainings},
+        day_of_week=",".join(data["weekdays"]),
+        hour=data["hour"],
+        minute=data["minute"],
+        id=str(message.from_user.id),
+        replace_existing=True
+    )
 
 
 async def get_weekdays(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    data = await state.get_data()
     if callback_data.get("filter", "0") == "1":
-        await call.bot.send_message(
-            call.message.chat.id,
-            text="Выберите день недели",
+        await call.message.edit_text("Выберите день недели")
+        await call.message.edit_reply_markup(
             reply_markup=schedule_keyboard
         )
+        weekdays = data.get("weekdays", set())
+        if callback_data.get("weekday").isdigit():
+            weekdays.update({callback_data.get("weekday")})
+        await state.update_data({"weekdays": weekdays})
         await ScheduleState.weekdays.set()
     else:
-        data = await state.get_data()
         if not data.get("weekdays"):
-            await state.update_data({"weekdays": [0, 1, 2, 3, 4]})
-        await call.answer("Введите время в формате HH:MM")
+            await state.update_data({"weekdays": {"0", "1", "2", "3", "4"}})
+        await call.message.edit_text("Введите время в формате HH:MM")
         await ScheduleState.next()
 
 
@@ -88,12 +170,17 @@ async def get_time(message: types.Message, state: FSMContext):
         hours, minutes = (int(value) for value in message.text.split(":"))
         time = timedelta(hours=hours, minutes=minutes)
         assert timedelta(hours=0, minutes=0) <= time <= timedelta(hours=23, minutes=59)
+        await state.update_data({"hour": hours, "minute": minutes})
+        await set_notification(message, state)
         await message.answer("Уведомление установлено!")
         await state.finish()
-    except Exception as error:
-        print(error)
-        await message.answer("Введите время от 00:00 до 23:59")
+    except (ValueError, AssertionError) as error:
+        await message.bot.send_message(message.from_user.id, "Введите время от 00:00 до 23:59")
         await ScheduleState.time.set()
+    await message.bot.delete_message(
+        message.from_user.id, message.message_id - 1
+    )
+    await message.delete()
 
 
 async def get_age(message: types.Message, state: FSMContext):
@@ -154,38 +241,92 @@ async def get_gender(call: types.CallbackQuery, callback_data: dict, state: FSMC
     await state.finish()
 
 
-async def send_nutritions(message: types.Message, state: FSMContext, direction: int = 1):
+async def send_nutritions(call: types.CallbackQuery, state: FSMContext, direction: int = 1):
     nutritions = (await state.get_data()).get("nutritions", [])
-    nutrition = nutritions.__next__(direction)
-    await message.edit_text(nutrition.message_short, parse_mode="HTML")
-    await message.edit_reply_markup(
-        create_content_keyboard(nutrition, sport_nutrition=nutrition.id)
-    )
-    await state.update_data({"nutritions": nutritions})
-    await NutritionState.next_nutrition.set()
+    try:
+        nutrition = nutritions.__next__(direction)
+        await call.message.edit_text(nutrition.message, parse_mode="HTML")
+        await call.message.edit_reply_markup(
+            create_content_keyboard(nutrition, sport_nutrition=nutrition.id)
+        )
+        await state.update_data({"nutritions": nutritions, "id": nutrition.id})
+        await NutritionState.next_nutrition.set()
+    except ValueError:
+        await call.message.edit_text("Контента нет")
+        await state.finish()
+
+
+async def send_portions(call: types.CallbackQuery, state: FSMContext, direction: int = 1):
+    portions = (await state.get_data()).get("portions", [])
+    try:
+        portion = portions.__next__(direction)
+        await call.message.edit_text(portion.message, parse_mode="HTML")
+        await call.message.edit_reply_markup(
+            create_move_keyboard()
+        )
+        await state.update_data({"portions": portions})
+        await NutritionState.next_portion.set()
+    except ValueError:
+        await call.answer("Контента нет", show_alert=True)
+        await NutritionState.next_nutrition.set()
 
 
 async def get_nutrition_filter(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     await state.update_data({"nutritions": iter(Cycle(
         await get_nutritions()
     ))})
-    await send_nutritions(call.message, state)
+    await send_nutritions(call, state)
 
 
 async def get_next_nutrition(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     direction = int(callback_data.get("direction"))
-    await send_nutritions(call.message, state, direction)
+    if direction != 0:
+        await send_nutritions(call, state, direction)
+    else:
+        data = await state.get_data()
+        await state.update_data({"portions": iter(Cycle(
+            await get_portions({"nutrition_id": data.get("id", 0)})
+        ))})
+        await send_portions(call, state, direction)
 
 
-async def send_programs(message: types.Message, state: FSMContext, direction: int = 1):
+async def get_next_portion(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    direction = int(callback_data.get("direction"))
+    if direction != 0:
+        await send_portions(call, state, direction)
+    else:
+        await state.set_state({"portions": None})
+        await send_nutritions(call, state, direction)
+
+
+async def send_programs(call: types.CallbackQuery, state: FSMContext, direction: int = 1):
     programs = (await state.get_data()).get("programs", [])
-    program = programs.__next__(direction)
-    await message.edit_text(program.message_short, parse_mode="HTML")
-    await message.edit_reply_markup(
-        create_content_keyboard(program, training_program=program.id)
-    )
-    await state.update_data({"programs": programs})
-    await ProgramState.next_program.set()
+    try:
+        program = programs.__next__(direction)
+        await call.message.edit_text(program.message, parse_mode="HTML")
+        await call.message.edit_reply_markup(
+            create_content_keyboard(program, training_program=program.id)
+        )
+        await state.update_data({"programs": programs, "id": program.id})
+        await ProgramState.next_program.set()
+    except ValueError:
+        await call.message.edit_text("Контента нет")
+        await state.finish()
+
+
+async def send_trainings(call: types.CallbackQuery, state: FSMContext, direction: int = 1):
+    trainings = (await state.get_data()).get("trainings", [])
+    try:
+        training = trainings.__next__(direction)
+        await call.message.edit_text(training.message, parse_mode="HTML")
+        await call.message.edit_reply_markup(
+            create_move_keyboard()
+        )
+        await state.update_data({"trainings": trainings})
+        await ProgramState.next_training.set()
+    except ValueError:
+        await call.answer("Контента нет", show_alert=True)
+        await ProgramState.next_program.set()
 
 
 async def get_program_filter(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
@@ -194,7 +335,7 @@ async def get_program_filter(call: types.CallbackQuery, callback_data: dict, sta
         await ProgramState.next()
     else:
         await state.update_data({"programs": iter(Cycle(await get_programs()))})
-        await send_programs(call.message, state)
+        await send_programs(call, state)
 
 
 async def get_difficulty_value(message: types.Message, state: FSMContext):
@@ -248,9 +389,25 @@ async def get_weeks_op(call: types.CallbackQuery, callback_data: dict, state: FS
     data = await state.get_data()
     data["weeks"] = callback_data.get("weeks") + data.get("weeks")
     await state.update_data({"programs": iter(Cycle(await get_programs(data)))})
-    await send_programs(call.message, state)
+    await send_programs(call, state, 0)
 
 
 async def get_next_program(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     direction = int(callback_data.get("direction"))
-    await send_programs(call.message, state, direction)
+    if direction != 0:
+        await send_programs(call, state, direction)
+    else:
+        data = await state.get_data()
+        await state.update_data({"trainings": iter(Cycle(
+            await get_trainings({"program_id": data.get("id", 0)})
+        ))})
+        await send_trainings(call, state, direction)
+
+
+async def get_next_training(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    direction = int(callback_data.get("direction"))
+    if direction != 0:
+        await send_trainings(call, state, direction)
+    else:
+        await state.set_state({"trainings": None})
+        await send_programs(call, state, direction)

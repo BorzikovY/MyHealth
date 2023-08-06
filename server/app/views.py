@@ -153,7 +153,7 @@ class ProgramApi(generics.GenericAPIView, metaclass=RestApi):
 
     __methods__ = ["get"]
     serializer_class = ProgramSerializer
-    permission_classes = (SubscribePermission,)
+    permission_classes = (IsAuthenticated,)
 
 
 class NutritionApi(generics.GenericAPIView, metaclass=RestApi):
@@ -163,7 +163,7 @@ class NutritionApi(generics.GenericAPIView, metaclass=RestApi):
 
     __methods__ = ["get"]
     serializer_class = NutritionSerializer
-    permission_classes = (SubscribePermission,)
+    permission_classes = (IsAuthenticated,)
 
 
 class TrainingApi(generics.GenericAPIView, metaclass=RestApi):
@@ -173,7 +173,7 @@ class TrainingApi(generics.GenericAPIView, metaclass=RestApi):
 
     __methods__ = ["get"]
     serializer_class = TrainingSerializer
-    permission_classes = (SubscribePermission,)
+    permission_classes = (IsAuthenticated,)
 
 
 class ApproachApi(generics.GenericAPIView, metaclass=RestApi):
@@ -193,7 +193,7 @@ class PortionApi(generics.GenericAPIView, metaclass=RestApi):
 
     __methods__ = ["get"]
     serializer_class = ApproachSerializer
-    permission_classes = (SubscribePermission,)
+    permission_classes = (IsAuthenticated,)
 
 
 """
@@ -272,12 +272,14 @@ class TrainingListApi(viewsets.ModelViewSet):
             self.request.query_params.get('time'),
             data_class=duration
         )
+        instances = TrainingProgram.objects.filter(id=program_id)[:1]
+        filter_data = {"training_program_set": instances} if instances else {}
         queryset = filter(
             lambda note:
             first_filter(note.difficulty)
             and second_filter(note.time),
             Training.objects.filter(
-                training_program_set=TrainingProgram.objects.filter(id=program_id)[:1]
+                *filter_data
             )
         )
 
@@ -292,8 +294,10 @@ class PortionListApi(viewsets.ModelViewSet):
 
     def filter_queryset(self, queryset):
         nutrition_id = self.request.query_params.get('nutrition_id')
+        instance = SportNutrition.objects.filter(id=nutrition_id).first()
+        filter_data = {"training": instance} if instance else {}
         queryset = Portion.objects.filter(
-            training=SportNutrition.objects.filter(id=nutrition_id).first()
+            **filter_data
         )
         return queryset
 
@@ -306,8 +310,10 @@ class ApproachListApi(viewsets.ModelViewSet):
 
     def filter_queryset(self, queryset):
         training_id = self.request.query_params.get('training_id')
+        instance = Training.objects.filter(id=training_id).first()
+        filter_data = {"training": instance} if instance else {}
         queryset = Approach.objects.filter(
-            training=Training.objects.filter(id=training_id).first()
+            **filter_data
         )
 
         return queryset

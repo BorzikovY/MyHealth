@@ -246,7 +246,7 @@ class TrainingProgram(models.Model):
         )
         if output.get("time", None) is not None:
             return output.get("time") / len(trainings)
-        return None
+        return 0
 
     @property
     def training_count(self) -> int:
@@ -268,7 +268,7 @@ class TrainingProgram(models.Model):
         queryset = Training.objects.filter(  # pylint: disable=no-member
             training_program_set=self
         ).aggregate(Avg("difficulty"))
-        return queryset.get("difficulty__avg")
+        return queryset.get("difficulty__avg", 0)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """
@@ -303,7 +303,7 @@ class Training(models.Model):
         output = Approach.objects.filter(  # pylint: disable=no-member
             training_id=self.id  # pylint: disable=no-member
         ).aggregate(time=Sum(F("time") + F("rest")))
-        return output.get("time")
+        return output.get("time", 0)
 
     @property
     def approach_count(self) -> int:

@@ -167,8 +167,6 @@ class PortionSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
     Portion model serializer
     """
 
-    nutritions = PrimaryKeyRelatedField(many=True, read_only=True)
-
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         if kwargs.get("portion_id") is not None:
             self.portion_id = kwargs.pop("portion_id")
@@ -190,7 +188,7 @@ class PortionSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerMi
             "proteins",
             "fats",
             "carbs",
-            "nutritions"
+            "sport_nutrition"
         )
         read_only_fields = fields
 
@@ -279,8 +277,6 @@ class TrainingSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerM
     Training model serializer
     """
 
-    programs = PrimaryKeyRelatedField(many=True, read_only=True)
-
     def __init__(self, *args, **kwargs):  # pylint: disable=super-init-not-called
         if kwargs.get("training_id") is not None:
             self.training_id = kwargs.pop("training_id")
@@ -303,7 +299,7 @@ class TrainingSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerM
             "difficulty",
             "time",
             "approach_count",
-            "programs"
+            "training_programs"
         )
         read_only_fields = fields
 

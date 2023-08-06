@@ -1,27 +1,34 @@
-from typing import List
-
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
-from api import ApiClient, create_anonymous_user, register_user, create_admin_user
+from api import (
+    ApiClient,
+    create_anonymous_user,
+    register_user,
+    update_subscribe,
+    get_program,
+    get_nutrition, get_approaches
+)
 from keyboards import (
     start_keyboard,
     create_my_health_keyboard,
-    filter_keyboard
+    filter_keyboard,
+    start_schedule_keyboard, move_buttons
 )
+from notifications import scheduler
 from states import (
     ProgramState,
     NutritionState,
-    SubscribeState
+    SubscribeState,
+    ScheduleState,
+    ApproachState, Cycle
 )
 from models import (
     TelegramUser,
     Token,
     TrainingProgram,
     Nutrition,
-    Training
 )
-from notifications import scheduler
 
 
 async def start(message: types.Message, state: FSMContext):
@@ -106,7 +113,7 @@ async def my_health(message: types.Message):
         await message.reply("Введите /start, чтобы зарегистрироваться")
 
 
-async def update_subscribe(call: types.CallbackQuery, state: FSMContext):
+async def update_my_health(call: types.CallbackQuery, state: FSMContext):
     await state.finish()
     await call.message.edit_text(
         "Введите возраст 👶️-🧓️",
@@ -114,103 +121,77 @@ async def update_subscribe(call: types.CallbackQuery, state: FSMContext):
     await SubscribeState.age.set()
 
 
-async def get_trainings(message: types.Message, data: dict = None):
-    client = ApiClient()
-    instance: TelegramUser = create_admin_user()
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        trainings: List[Training] = await client.get_trainings(
-            instance, token,
-            cache=True, data=data
-        )
-        for training in trainings:
-            await message.reply(training.message_short, parse_mode="HTML")
-        await message.reply(
-            "Список тренировок" if trainings else "Контента нет("
-        )
+async def buy_content(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.finish()
+    data = {key: value for key, value in callback_data.items() if value.isnumeric()}
+    if await update_subscribe(call.from_user, data):
+        await call.message.edit_text("Вы успешно преобрели продукт!")
     else:
-        await message.reply("Введите /start, чтобы начать...")
+        await call.message.edit_text("Продукт не был преобретен. Проверьте баланс или обратитесь в тех поддержку.")
 
 
-async def get_approaches(message: types.Message):
-    pass
-
-
-async def get_program(call: types.CallbackQuery, callback_data: dict):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(data=call.message.chat)
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        id = int(callback_data.get("id", 0))
-        program: TrainingProgram = await client.get_program(
-            instance, token,
-            cache=True,
-            data={"id": id}
-        )
-        if isinstance(program, TrainingProgram):
-            await call.message.answer(program.message, parse_mode="HTML")
-        else:
-            msg = "Вы еще не преобрели тренировочную программу\n\n" \
-                  "Введите /programs, чтобы просмотреть список доступных программ"
-            await call.message.answer(msg)
+async def program(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.finish()
+    instance = await get_program(call.from_user, {"id": int(callback_data.get("id", 0))})
+    if isinstance(instance, TrainingProgram):
+        await call.message.answer(instance.message, parse_mode="HTML")
     else:
-        await call.message.answer("Введите /start, чтобы начать...")
+        msg = "Вы еще не преобрели тренировочную программу\n\n" \
+              "Введите /programs, чтобы просмотреть список доступных программ"
+        await call.message.answer(msg)
 
 
-async def get_nutrition(call: types.CallbackQuery, callback_data: dict):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(call.message.chat)
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        id = int(callback_data.get("id", 0))
-        nutrition: Nutrition = await client.get_nutrition(
-            instance, token,
-            cache=True,
-            data={"id": id}
-        )
-        if isinstance(nutrition, Nutrition):
-            await call.message.answer(nutrition.message, parse_mode="HTML")
-        else:
-            msg = "Вы еще не преобрели подписку на спортивное питание\n\n" \
-                  "Введите /nutritions, чтобы просмотреть список спортивного питания"
-            await call.message.answer(msg)
+async def nutrition(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.finish()
+    instance = await get_nutrition(call.from_user, {"id": int(callback_data.get("id", 0))})
+    if isinstance(instance, Nutrition):
+        await call.message.answer(instance.message, parse_mode="HTML")
     else:
-        await call.message.answer("Введите /start, чтобы начать...")
+        msg = "Вы еще не преобрели подписку на спортивное питание\n\n" \
+              "Введите /nutritions, чтобы просмотреть список спортивного питания"
+        await call.message.answer(msg)
 
 
-async def get_training(call: types.CallbackQuery, callback_data: dict):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(call.message.chat)
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        id = int(callback_data.get("id", 0))
-        training: Training = await client.get_training(
-            instance, token,
-            data={"id": id}
-        )
-        if isinstance(training, Training):
-            keyboard = types.InlineKeyboardMarkup().add(
-                types.InlineKeyboardButton("Список упражнений", callback_data="approaches")
-            )
-            await call.message.answer(
-                training.message,
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
-        else:
-            msg = "Вы еще не преобрели тренировочную программу\n\n" \
-                  "Введите /programs, чтобы просмотреть список доступных программ"
-            await call.message.answer(msg)
-    else:
-        await call.message.answer("Введите /start, чтобы начать...")
-
-
-async def send_notification(message: types.Message):
-    await message.bot.send_message(
-        message.from_user.id,
-        "Пора тренироваться!"
+async def schedule(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.finish()
+    msg = "Сконфигурируйте расписание самостоятельно или\n " \
+          "используйте параметры по умолчанию\n\n" \
+          "(уведомления будут приходить с понедельника по пятницу)"
+    await call.bot.send_message(
+        call.message.chat.id,
+        msg,
+        reply_markup=start_schedule_keyboard
     )
+    await state.update_data({"program_id": int(callback_data.get("program_id", 0))})
+    await ScheduleState.weekdays.set()
+
+
+async def approaches(message: types.Message, state: FSMContext):
+    await state.finish()
+    job = scheduler.get_job(str(message.from_user.id))
+    if trainings := job.kwargs.get("trainings"):
+        instances = iter(Cycle(await get_approaches(
+            message.from_user,
+            {"training_id": trainings.current}
+        )))
+        if instances.loop:
+            approach = instances.__next__(0)
+            await message.delete()
+            await message.bot.send_message(
+                message.from_user.id, approach.message,
+                reply_markup=types.InlineKeyboardMarkup().add(
+                    *move_buttons
+                ), parse_mode="HTML"
+            )
+            await state.update_data({"approaches": instances})
+            await ApproachState.next_approach.set()
+        else:
+            await message.reply(
+                "Тренировка находится в разработке. Обратитесь в тех поддержку."
+            )
+    else:
+        await message.reply(
+            "Уведомление не найдено. Установите уведомление о начале тренировки в меню /my_health"
+        )
+
+
