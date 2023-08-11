@@ -183,7 +183,8 @@ class Training:
 class TrainingProgram:
 
     def __post_init__(self):
-        difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
+        # difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
+        difficulty_icon = "💪️"
         group_name = self.group.name if self.group else "Общая подготовка"
         avg_training_time = self.avg_training_time if self.avg_training_time else "-"
         self.message = program_message.format(

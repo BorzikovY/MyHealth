@@ -86,6 +86,9 @@ def create_my_health_keyboard(**kwargs):
             program_id=kwargs.get("training_program")
         ))
     )
+    keyboard.add(
+        types.InlineKeyboardButton("Калькулятор калорий", callback_data="calculate_calories")
+    )
     return keyboard
 
 
