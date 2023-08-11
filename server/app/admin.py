@@ -165,7 +165,13 @@ class ApproachAdmin(admin.ModelAdmin):
     Approach Admin panel
     """
 
-    list_display = ("training", "exercise", "time", "rest", "repetition_count")
+    list_display = (
+        "query_place", "training",
+        "exercise", "time",
+        "rest", "repetition_count", "amount"
+    )
+
+    list_display_links = ["query_place", "training"]
 
 
 class ApproachInline(admin.TabularInline):

@@ -11,7 +11,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Avg, F, Sum
+from django.db.models import Avg, F, Sum, ExpressionWrapper
 
 from app.managers import TelegramUserManager
 
@@ -33,7 +33,7 @@ class TelegramUser(AbstractUser):
     telegram_id = models.CharField(
         verbose_name="Telegram id", unique=True, max_length=32
     )
-    chat_id = models.CharField(verbose_name="Chat id", unique=True, max_length=128)
+    chat_id = models.CharField(verbose_name="Chat id", max_length=128)
     first_name = models.CharField(
         verbose_name="Имя", max_length=32, null=True, blank=True
     )
@@ -242,7 +242,11 @@ class TrainingProgram(models.Model):
             training_program_set=self
         )
         output = trainings.aggregate(
-            time=Sum(F("approach_set__time") + F("approach_set__rest"))
+            time=Sum(
+                ExpressionWrapper(
+                    (F("approach_set__time") + F("approach_set__rest")) * F("approach_set__amount"),
+                    output_field=models.DurationField())
+            )
         )
         if output.get("time", None) is not None:
             return output.get("time") / len(trainings)
@@ -302,7 +306,10 @@ class Training(models.Model):
         """
         output = Approach.objects.filter(  # pylint: disable=no-member
             training_id=self.id  # pylint: disable=no-member
-        ).aggregate(time=Sum(F("time") + F("rest")))
+        ).aggregate(time=Sum(ExpressionWrapper(
+            (F("time") + F("rest")) * F("amount"),
+            output_field=models.DurationField()))
+                    )
         return output.get("time", 0)
 
     @property
@@ -356,6 +363,12 @@ class Approach(models.Model):
     repetition_count = models.SmallIntegerField(
         verbose_name="Кол-во повторений", validators=[MinValueValidator(1)]
     )
+    amount = models.SmallIntegerField(
+        verbose_name="Кол-во подходов", validators=[MinValueValidator(1)]
+    )
+    query_place = models.SmallIntegerField(
+        verbose_name="Номер упражнения", validators=[MinValueValidator(0)]
+    )
     rest = models.DurationField(verbose_name="Время отдыха")
     training = models.ForeignKey(
         Training,
@@ -383,6 +396,7 @@ class Approach(models.Model):
 
         verbose_name = "Подход"
         verbose_name_plural = "Подходы"
+        unique_together = ("training", "query_place")
 
 
 class SportNutrition(models.Model):

@@ -2,18 +2,22 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 
 from api import (
+    Telegram,
     ApiClient,
     create_anonymous_user,
     register_user,
     update_subscribe,
     get_program,
-    get_nutrition, get_approaches
+    get_nutrition,
+    get_approaches,
+    get_trainings
 )
 from keyboards import (
     start_keyboard,
     create_my_health_keyboard,
     filter_keyboard,
-    start_schedule_keyboard, move_buttons
+    start_schedule_keyboard,
+    create_training_keyboard
 )
 from notifications import scheduler
 from states import (
@@ -21,7 +25,9 @@ from states import (
     NutritionState,
     SubscribeState,
     ScheduleState,
-    ApproachState, Cycle
+    ApproachState,
+    Cycle,
+    Iterable
 )
 from models import (
     TelegramUser,
@@ -36,11 +42,16 @@ async def start(message: types.Message, state: FSMContext):
     client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message.from_user)
 
-    await register_user(client, instance)
-    msg: str = "Привет 👋️ Я *спорт\-бот*, и я помогу тебе подобрать\n" \
-               "программу под твои интересы и физическую подготовку"
+    user: TelegramUser = await register_user(client, instance)
+    if user:
+        msg: str = f"Привет {user.first_name} {user.last_name} 👋️\n\n" \
+                   "Я <b>спорт-бот</b>, и я помогу тебе подобрать" \
+                   "программу под твои интересы и физическую подготовку"
+    else:
+        msg: str = "Введите /my_health, чтобы посмотреть список доступных функций\n\n" \
+                   "Если у вас возникли вопросы, обратитесь в <b>тех поддержку</b>"
 
-    await message.reply(msg, reply_markup=start_keyboard, parse_mode="MarkdownV2")
+    await message.reply(msg, reply_markup=start_keyboard, parse_mode="HTML")
 
 
 async def account(message: types.Message):
@@ -73,7 +84,7 @@ async def subscribe(message: types.Message, state: FSMContext):
 
 async def programs(message: types.Message, state: FSMContext):
     await state.finish()
-    await message.bot.send_message(
+    await Telegram.send_message(
         message.from_user.id,
         "Включить в подборку фильтрацию?",
         reply_markup=filter_keyboard
@@ -83,7 +94,7 @@ async def programs(message: types.Message, state: FSMContext):
 
 async def nutritions(message: types.Message, state: FSMContext):
     await state.finish()
-    await message.bot.send_message(
+    await Telegram.send_message(
         message.from_user.id,
         "Включить в подборку фильтрацию?",
         reply_markup=filter_keyboard
@@ -103,8 +114,8 @@ async def my_health(message: types.Message):
                 subscriber.message,
                 parse_mode="HTML",
                 reply_markup=create_my_health_keyboard(
-                    sport_nutrition=subscriber.sport_nutrition,
-                    training_program=subscriber.training_program
+                    sport_nutrition=subscriber.sport_nutrition if subscriber.sport_nutrition else 0,
+                    training_program=subscriber.training_program if subscriber.training_program else 0
                 )
             )
         else:
@@ -123,6 +134,7 @@ async def update_my_health(call: types.CallbackQuery, state: FSMContext):
 
 async def buy_content(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     await state.finish()
+    await call.answer("Внимание! Текущая программа будет заменена другой!", show_alert=True)
     data = {key: value for key, value in callback_data.items() if value.isnumeric()}
     if await update_subscribe(call.from_user, data):
         await call.message.edit_text("Вы успешно преобрели продукт!")
@@ -157,7 +169,7 @@ async def schedule(call: types.CallbackQuery, callback_data: dict, state: FSMCon
     msg = "Сконфигурируйте расписание самостоятельно или\n " \
           "используйте параметры по умолчанию\n\n" \
           "(уведомления будут приходить с понедельника по пятницу)"
-    await call.bot.send_message(
+    await Telegram.send_message(
         call.message.chat.id,
         msg,
         reply_markup=start_schedule_keyboard
@@ -166,32 +178,51 @@ async def schedule(call: types.CallbackQuery, callback_data: dict, state: FSMCon
     await ScheduleState.weekdays.set()
 
 
+async def disable_schedule(call: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    if scheduler.get_job(str(call.from_user.id)):
+        scheduler.remove_job(str(call.from_user.id))
+    await Telegram.send_message(
+        call.from_user.id, "Уведомление успешно отменено!"
+    )
+
+
 async def approaches(message: types.Message, state: FSMContext):
     await state.finish()
-    job = scheduler.get_job(str(message.from_user.id))
-    if trainings := job.kwargs.get("trainings"):
-        instances = iter(Cycle(await get_approaches(
-            message.from_user,
-            {"training_id": trainings.current}
-        )))
-        if instances.loop:
-            approach = instances.__next__(0)
-            await message.delete()
-            await message.bot.send_message(
-                message.from_user.id, approach.message,
-                reply_markup=types.InlineKeyboardMarkup().add(
-                    *move_buttons
-                ), parse_mode="HTML"
-            )
-            await state.update_data({"approaches": instances})
-            await ApproachState.next_approach.set()
+    client = ApiClient()
+
+    instance: TelegramUser = create_anonymous_user(message.chat)
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        user: TelegramUser = await client.get_user(instance, token, cache=True)
+        if subscriber := user.subscriber:
+            if program_id := subscriber.training_program:
+                trainings = iter(Iterable([
+                    training.id for training in
+                    await get_trainings({"program_id": program_id})
+                ]))
+                if trainings.loop:
+                    instances = iter(
+                        Cycle(await get_approaches(
+                            message.from_user, {"training_id": next(trainings)}
+                        ))
+                    )
+                    approach = next(instances)
+                    await Telegram.send_message(
+                        message.from_user.id, approach.message,
+                        reply_markup=create_training_keyboard(), parse_mode="HTML"
+                    )
+                    await state.update_data({"trainings": trainings, "approaches": instances})
+                    await ApproachState.next_approach.set()
+                else:
+                    await message.reply(
+                        "Текущая программа тренировок находится в разработке. Обратитесь в тех поддержку."
+                    )
+            else:
+                await message.reply(
+                    "Программа не найдена. Подпишитесь на одну из доступных программ /programs"
+                )
         else:
-            await message.reply(
-                "Тренировка находится в разработке. Обратитесь в тех поддержку."
-            )
+            await message.reply("Введите /subscribe, чтобы подписаться")
     else:
-        await message.reply(
-            "Уведомление не найдено. Установите уведомление о начале тренировки в меню /my_health"
-        )
-
-
+        await message.reply("Введите /start, чтобы зарегистрироваться")

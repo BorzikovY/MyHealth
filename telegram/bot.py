@@ -31,6 +31,7 @@ from states import (
     get_gender,
     ScheduleState,
     get_weekdays,
+    get_location,
     get_time,
     NutritionState,
     get_nutrition_filter,
@@ -63,7 +64,7 @@ dp = Dispatcher(Telegram, storage=storage)
 @dp.callback_query_handler(text="quit_content", state="*")
 async def delete_messages(call: types.CallbackQuery, state):
     await call.message.delete()
-    msg = "Надеюсь, что вы нашли то, что искали"
+    msg = "Если я еще понадоблюсь, введите /start"
     await call.bot.send_message(call.from_user.id, msg)
     await state.finish()
 
@@ -87,6 +88,10 @@ dp.register_callback_query_handler(
     get_weekdays,
     schedule_filter.filter(),
     state=ScheduleState.weekdays
+)
+dp.register_message_handler(
+    get_location,
+    state=ScheduleState.location
 )
 dp.register_message_handler(
     get_time,
