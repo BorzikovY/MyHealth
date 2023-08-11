@@ -1,6 +1,9 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import List
 
+import pytz
+from timezonefinder import TimezoneFinder
+from geopy.geocoders import Nominatim
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
@@ -11,7 +14,7 @@ from api import (
     get_nutritions,
     update_subscribe,
     get_trainings,
-    get_portions
+    get_portions, get_approaches
 )
 from keyboards import (
     schedule_keyboard,
@@ -19,7 +22,7 @@ from keyboards import (
     create_op_keyboard,
     create_content_keyboard,
     create_move_keyboard,
-    move_buttons
+    create_training_keyboard, location_keyboard
 )
 from notifications import scheduler
 
@@ -53,24 +56,8 @@ class SubscribeState(StatesGroup):
 
 class ScheduleState(StatesGroup):
     weekdays: State = State()
+    location: State = State()
     time: State = State()
-
-
-class Cycle:
-
-    def __init__(self, iterable: List):
-        self.loop = iterable
-
-    def __iter__(self):
-        self._count = 0
-        return self
-
-    def __next__(self, direction: int):
-        try:
-            self._count = (self._count + direction) % len(self.loop)
-            return self.loop[self._count]
-        except ZeroDivisionError:
-            raise ValueError("No content")
 
 
 class Iterable:
@@ -80,16 +67,24 @@ class Iterable:
 
     def __iter__(self):
         self._count = -1
-        self.current = 0
         return self
 
-    def __next__(self):
+    def __next__(self, *args, **kwargs):
         try:
             self._count += 1
-            self.current = self.loop[self._count]
-            return self.current
+            return self.loop[self._count]
         except IndexError:
             raise StopIteration("No content")
+
+
+class Cycle(Iterable):
+
+    def __next__(self, direction: int = 1):
+        try:
+            self._count = (self._count + direction) % len(self.loop)
+            return self.loop[self._count]
+        except ZeroDivisionError:
+            raise ValueError("No content")
 
 
 async def send_approach(call: types.CallbackQuery, state: FSMContext, direction: int = 1):
@@ -97,9 +92,7 @@ async def send_approach(call: types.CallbackQuery, state: FSMContext, direction:
     approach = approaches.__next__(direction)
     await call.message.edit_text(approach.message, parse_mode="HTML")
     await call.message.edit_reply_markup(
-        types.InlineKeyboardMarkup().add(
-            *move_buttons
-        )
+        create_training_keyboard()
     )
     await state.update_data({"approaches": approaches})
     await ApproachState.next_approach.set()
@@ -107,39 +100,40 @@ async def send_approach(call: types.CallbackQuery, state: FSMContext, direction:
 
 async def get_next_approach(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     direction = int(callback_data.get("direction"))
+    if direction == 0:
+        trainings = (await state.get_data()).get("trainings")
+        try:
+            instances = iter(
+                Cycle(await get_approaches(
+                    call.from_user, {"training_id": next(trainings)}
+                ))
+            )
+            await state.update_data({"trainings": trainings, "approaches": instances})
+        except StopIteration as error:
+            await call.message.edit_text("Программа закончилась. Введите /approaches, чтобы еще раз все посмотреть.")
+            return
     await send_approach(call, state, direction)
 
 
-async def send_notification(chat_id, trainings):
-    try:
-        trainings.__next__()
-        job = scheduler.get_job(str(chat_id))
-        job.modify(kwargs={"chat_id": chat_id, "trainings": trainings})
-        await Telegram.send_message(
-            chat_id,
-            "Пора тренироваться! Введите /approaches, чтобы просмотреть список упражнений"
-        )
-    except StopIteration:
-        scheduler.remove_job(str(chat_id))
-        await Telegram.send_message(
-            chat_id,
-            "Вы успешно закончили тренировочную программу!"
-        )
+async def send_notification(chat_id):
+    await Telegram.send_message(
+        chat_id,
+        "Пора тренироваться! Введите /approaches, чтобы просмотреть список упражнений."
+    )
 
 
 async def set_notification(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    trainings = iter(Iterable([
-        training.id for training in await get_trainings(
-            {"program_id": data.get("program_id", 0)}
-        )
-    ]))
+    offset = datetime.now(
+        tz=pytz.timezone(data["timezone"])
+    ).utcoffset().total_seconds() // 3600
+
     scheduler.add_job(
         send_notification,
         trigger="cron",
-        kwargs={"chat_id": message.from_user.id, "trainings": trainings},
+        kwargs={"chat_id": message.from_user.id},
         day_of_week=",".join(data["weekdays"]),
-        hour=data["hour"],
+        hour=data["hour"] - int(offset),
         minute=data["minute"],
         id=str(message.from_user.id),
         replace_existing=True
@@ -161,8 +155,29 @@ async def get_weekdays(call: types.CallbackQuery, callback_data: dict, state: FS
     else:
         if not data.get("weekdays"):
             await state.update_data({"weekdays": {"0", "1", "2", "3", "4"}})
-        await call.message.edit_text("Введите время в формате HH:MM")
-        await ScheduleState.next()
+        await call.message.delete()
+        await Telegram.send_message(
+            call.from_user.id,
+            "Введите город, в котором живете (необходимо для настройки времени)"
+        )
+        await ScheduleState.location.set()
+
+
+async def get_location(message: types.Message, state: FSMContext):
+    geolocator = Nominatim(user_agent="geoapiExercises")
+    location = geolocator.geocode(message.text)
+
+    timezone = TimezoneFinder().timezone_at(
+        lng=location.longitude, lat=location.latitude
+    )
+
+    await state.update_data({"timezone": timezone})
+    await Telegram.delete_message(
+        message.from_user.id, message.message_id - 1
+    )
+    await message.delete()
+    await Telegram.send_message(message.from_user.id, "Введите время в формате HH:MM")
+    await ScheduleState.next()
 
 
 async def get_time(message: types.Message, state: FSMContext):
@@ -170,14 +185,19 @@ async def get_time(message: types.Message, state: FSMContext):
         hours, minutes = (int(value) for value in message.text.split(":"))
         time = timedelta(hours=hours, minutes=minutes)
         assert timedelta(hours=0, minutes=0) <= time <= timedelta(hours=23, minutes=59)
-        await state.update_data({"hour": hours, "minute": minutes})
+        await state.update_data(
+            {
+                "hour": hours,
+                "minute": minutes
+             }
+        )
         await set_notification(message, state)
         await message.answer("Уведомление установлено!")
         await state.finish()
     except (ValueError, AssertionError) as error:
-        await message.bot.send_message(message.from_user.id, "Введите время от 00:00 до 23:59")
+        await Telegram.send_message(message.from_user.id, "Введите время от 00:00 до 23:59")
         await ScheduleState.time.set()
-    await message.bot.delete_message(
+    await Telegram.delete_message(
         message.from_user.id, message.message_id - 1
     )
     await message.delete()
@@ -188,12 +208,12 @@ async def get_age(message: types.Message, state: FSMContext):
         value = int(message.text)
         assert 0 <= value <= 100
         await state.update_data(age=value)
-        await message.answer("Введите рост 📏️ (в метрах)")
+        await Telegram.send_message(message.from_user.id, "Введите рост 📏️ (в метрах)")
         await SubscribeState.next()
-    except Exception:
-        await message.answer("Введите целое число от 0 до 100")
+    except (ValueError, AssertionError) as error:
+        await Telegram.send_message(message.from_user.id, "Введите целое число от 0 до 100")
         await SubscribeState.height.set()
-    await message.bot.delete_message(
+    await Telegram.delete_message(
         message.from_user.id, message.message_id - 1
     )
     await message.delete()
@@ -204,12 +224,12 @@ async def get_height(message: types.Message, state: FSMContext):
         value = float(message.text)
         assert 1. <= value <= 3.
         await state.update_data(height=value)
-        await message.answer("Введите вес ⚖️ (в кг)")
+        await Telegram.send_message(message.from_user.id, "Введите вес ⚖️ (в кг)")
         await SubscribeState.next()
-    except Exception:
-        await message.answer("Введите десятичное число от 1 до 3")
+    except (ValueError, AssertionError) as error:
+        await Telegram.send_message(message.from_user.id, "Введите десятичное число от 1 до 3")
         await SubscribeState.height.set()
-    await message.bot.delete_message(
+    await Telegram.delete_message(
         message.from_user.id, message.message_id - 1
     )
     await message.delete()
@@ -220,12 +240,12 @@ async def get_weight(message: types.Message, state: FSMContext):
         value = float(message.text)
         assert 20. <= value <= 220.
         await state.update_data(weight=value)
-        await message.answer("Выберите гендер 👨️/👩️/🚁️", reply_markup=gender_keyboard)
+        await Telegram.send_message(message.from_user.id, "Выберите гендер 👨️/👩️/🚁️", reply_markup=gender_keyboard)
         await SubscribeState.next()
-    except Exception:
-        await message.answer("Введите десятичное число от 20 до 220")
+    except (ValueError, AssertionError) as error:
+        await Telegram.send_message(message.from_user.id, "Введите десятичное число от 20 до 220")
         await SubscribeState.weight.set()
-    await message.bot.delete_message(
+    await Telegram.delete_message(
         message.from_user.id, message.message_id - 1
     )
     await message.delete()
@@ -247,7 +267,7 @@ async def send_nutritions(call: types.CallbackQuery, state: FSMContext, directio
         nutrition = nutritions.__next__(direction)
         await call.message.edit_text(nutrition.message, parse_mode="HTML")
         await call.message.edit_reply_markup(
-            create_content_keyboard(nutrition, sport_nutrition=nutrition.id)
+            create_content_keyboard(nutrition)
         )
         await state.update_data({"nutritions": nutritions, "id": nutrition.id})
         await NutritionState.next_nutrition.set()
@@ -352,7 +372,7 @@ async def get_difficulty_value(message: types.Message, state: FSMContext):
     except (AssertionError, ValueError) as valid_error:
         await message.answer("Введите десятичное число от 1 до 5")
         await ProgramState.difficulty_op.set()
-    await message.bot.delete_message(
+    await Telegram.delete_message(
         message.from_user.id, message.message_id - 1
     )
     await message.delete()
@@ -379,7 +399,7 @@ async def get_weeks_value(message: types.Message, state: FSMContext):
     except (AssertionError, ValueError) as valid_error:
         await message.answer("Введите число больше 0")
         await ProgramState.weeks_op.set()
-    await message.bot.delete_message(
+    await Telegram.delete_message(
         message.from_user.id, message.message_id - 1
     )
     await message.delete()
@@ -389,7 +409,7 @@ async def get_weeks_op(call: types.CallbackQuery, callback_data: dict, state: FS
     data = await state.get_data()
     data["weeks"] = callback_data.get("weeks") + data.get("weeks")
     await state.update_data({"programs": iter(Cycle(await get_programs(data)))})
-    await send_programs(call, state, 0)
+    await send_programs(call, state)
 
 
 async def get_next_program(call: types.CallbackQuery, callback_data: dict, state: FSMContext):

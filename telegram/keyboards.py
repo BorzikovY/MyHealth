@@ -38,6 +38,17 @@ def create_op_keyboard(param: str, value):
         )
 
 
+def create_training_keyboard():
+    keyboard = types.InlineKeyboardMarkup().add(
+        types.InlineKeyboardButton("Следующая тренировка", callback_data=move.new(
+            direction=0
+        ))
+    )
+    return keyboard.add(
+        *move_buttons
+    )
+
+
 def create_move_keyboard():
     keyboard = types.InlineKeyboardMarkup().add(
         types.InlineKeyboardButton("Назад", callback_data=move.new(
@@ -50,21 +61,23 @@ def create_move_keyboard():
 
 
 def create_content_keyboard(content: TrainingProgram | Nutrition, **kwargs):
-    keyboard = types.InlineKeyboardMarkup(4).add(
-        types.InlineKeyboardButton(
-            f"{content.price} руб 💰️" if content.price > 0. else "Получить бесплатно ✅️",
-            callback_data=buy.new(
-                sport_nutrition=kwargs.get("sport_nutrition", "none"),
-                training_program=kwargs.get("training_program", "none")
-            )
-        ),
-        types.InlineKeyboardButton(
-            text="Подробнее...",
-            callback_data=move.new(
-                direction=0
-            )
+    look_up = types.InlineKeyboardButton(
+        text="Подробнее...",
+        callback_data=move.new(
+            direction=0
         )
     )
+    buy_it = types.InlineKeyboardButton(
+        f"{content.price} руб 💰️" if content.price > 0. else "Получить бесплатно ✅️",
+        callback_data=buy.new(
+            sport_nutrition=kwargs.get("sport_nutrition", "none"),
+            training_program=kwargs.get("training_program", "none")
+        )
+    )
+    if kwargs.get("sport_nutrition") or kwargs.get("training_program"):
+        keyboard = types.InlineKeyboardMarkup().add(buy_it, look_up)
+    else:
+        keyboard = types.InlineKeyboardMarkup().add(look_up)
     keyboard.add(
         *move_buttons
     )
@@ -106,9 +119,14 @@ start_keyboard = types.ReplyKeyboardMarkup(3, one_time_keyboard=False).add(
 )
 
 start_keyboard.add(
-    types.KeyboardButton(text="/programs Тренировочные программы 🎽"),
+    types.KeyboardButton(text="/programs Программы тренировок 🎽"),
     types.KeyboardButton(text="/nutritions Спортивное питание 🥑"),
     types.KeyboardButton(text="/approaches Текущая тренировка ⏳")
+)
+
+location_keyboard = types.ReplyKeyboardMarkup(2).add(
+    types.KeyboardButton("/location Да, я вам доверяю", request_location=True),
+    types.KeyboardButton("/quit_content Неа, без уведомлений обойдусь")
 )
 
 
