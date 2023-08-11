@@ -188,7 +188,7 @@ class TrainingProgram:
         avg_training_time = self.avg_training_time if self.avg_training_time else "-"
         self.message = program_message.format(
             name=self.name, group_name=group_name,
-            image="https://img2.goodfon.ru/original/1024x1024/c/e9/gym-man-woman-workout-fitness.jpg",
+            image=self.image,
             difficulty=self.difficulty,
             difficulty_icon=difficulty_icon,
             weeks=self.weeks,

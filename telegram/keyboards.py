@@ -89,9 +89,7 @@ def create_my_health_keyboard(**kwargs):
         types.InlineKeyboardButton("Посмотреть программу", callback_data=program_filter.new(
             id=kwargs.get("training_program")
         )),
-        types.InlineKeyboardButton("Посмотреть питание", callback_data=nutrition_filter.new(
-            id=kwargs.get("sport_nutrition")
-        ))
+        types.InlineKeyboardButton("Отключить уведомление", callback_data="quit_notification")
     )
     keyboard.add(
         types.InlineKeyboardButton("Обновить данные", callback_data="update_subscribe"),
@@ -120,12 +118,6 @@ start_keyboard.add(
     types.KeyboardButton(text="/nutritions Спортивное питание 🥑"),
     types.KeyboardButton(text="/approaches Текущая тренировка ⏳")
 )
-
-location_keyboard = types.ReplyKeyboardMarkup(2).add(
-    types.KeyboardButton("/location Да, я вам доверяю", request_location=True),
-    types.KeyboardButton("/quit_content Неа, без уведомлений обойдусь")
-)
-
 
 filter_keyboard = types.InlineKeyboardMarkup(2).add(
     types.InlineKeyboardButton("Да", callback_data=_filter.new(

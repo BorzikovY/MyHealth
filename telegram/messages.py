@@ -12,8 +12,8 @@ approach_message = "{exercise}\n" \
                    "<pre>Время отдыха:         {rest}</pre>"
 
 exercise_message = "<b>{name}</b>\n" \
+                   "<a href=\"{video}\">Посмотреть видео</a>\n" \
                    "<a href=\"{image}\">&#8205;</a>\n" \
-                   "<a href=\"{video}\">&#8205;</a>\n" \
                    "<b>Описание</b> <i>{description}</i>"
 
 user_message: str = "<b>Пользовательские данные</b>\n\n" \
@@ -28,10 +28,10 @@ subscriber_message: str = "<b>Личная информация</b>\n\n" \
                           "<pre>Гендер:  {gender_icon}</pre>\n" \
 
 nutrition_message = "<b>{name}</b>\n\n" \
-                "<pre>Объем:            {dosages}</pre>\n" \
-                "<pre>Употребление:     {use}</pre>\n" \
-                "<pre>Противопоказания: {contraindications}</pre>\n\n" \
-                "<b>Описание</b> <i>{description}</i>"
+                    "<pre>Объем:            {dosages}</pre>\n" \
+                    "<pre>Употребление:     {use}</pre>\n" \
+                    "<pre>Противопоказания: {contraindications}</pre>\n\n" \
+                    "<b>Описание</b> <i>{description}</i>"
 
 portion_message = "<b>{name}</b>\n\n" \
                   "<pre>Калории:  {calories}</pre>\n" \
