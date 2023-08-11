@@ -235,6 +235,10 @@ class Subscriber:
         elif self.gender == "female":
             return "👩️"
         return "🚁️"
+    
+    @property
+    def is_kfc_valid(self):
+        return all([self.age, self.height, self.weight]) and (self.gender in ['female', 'male'])
 
     def __post_init__(self):
         self.message = subscriber_message.format(

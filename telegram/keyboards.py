@@ -15,6 +15,7 @@ schedule_filter = CallbackData("schedule_filter", "filter", "weekday")
 difficulty_filter = CallbackData("difficulty_filter", "difficulty")
 week_filter = CallbackData("week_filter", "weeks")
 gender_filter = CallbackData("gender", "gender")
+activity_filter = CallbackData("activity", "activity")
 
 
 op_filters = {
@@ -85,7 +86,7 @@ def create_content_keyboard(content: TrainingProgram | Nutrition, **kwargs):
 
 
 def create_my_health_keyboard(**kwargs):
-    keyboard = types.InlineKeyboardMarkup(4).add(
+    keyboard = types.InlineKeyboardMarkup(5).add(
         types.InlineKeyboardButton("Посмотреть программу", callback_data=program_filter.new(
             id=kwargs.get("training_program")
         )),
@@ -100,7 +101,7 @@ def create_my_health_keyboard(**kwargs):
         ))
     )
     keyboard.add(
-        types.InlineKeyboardButton("Калькулятор калорий", callback_data="calculate_calories")
+        types.InlineKeyboardButton("Калькулятор калорий и БЖУ", callback_data="calculate_calories")
     )
     return keyboard
 
@@ -198,5 +199,24 @@ schedule_keyboard.add(
     types.InlineKeyboardButton("хватит", callback_data=schedule_filter.new(
         filter=0,
         weekday="None"
+    ))
+)
+activity_keyboard = types.InlineKeyboardMarkup(5).add(
+    types.InlineKeyboardButton("Сидячий образ жизни", callback_data=activity_filter.new(
+        activity=1.2
+    )),
+    types.InlineKeyboardButton("Умеренная активность", callback_data=activity_filter.new(
+        activity=1.375
+    )),
+    types.InlineKeyboardButton("Средняя активность", callback_data=activity_filter.new(
+        activity=1.55
+    ))
+)
+activity_keyboard.add(
+    types.InlineKeyboardButton("Интенсивные нагрузки", callback_data=activity_filter.new(
+        activity=1.725
+    )),
+    types.InlineKeyboardButton("Активные занятия спортом", callback_data=activity_filter.new(
+        activity=1.9
     ))
 )

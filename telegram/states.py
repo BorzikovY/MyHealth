@@ -54,6 +54,10 @@ class SubscribeState(StatesGroup):
     gender: State = State()
 
 
+class CaloriesState(StatesGroup):
+    activity: State = State()
+
+
 class ScheduleState(StatesGroup):
     weekdays: State = State()
     location: State = State()
@@ -258,6 +262,17 @@ async def get_gender(call: types.CallbackQuery, callback_data: dict, state: FSMC
         await call.message.edit_text("Данные были успешно обновлены!")
     else:
         await call.message.edit_text("Что-то пошло не так")
+    await state.finish()
+
+async def get_activity(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    activity = float(callback_data.get('activity'))
+    data = await state.get_data()
+    match data['gender']:
+        case 'male':
+            calories = ((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] + 5)) * activity
+        case 'female':
+            calories = ((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] - 161)) * activity
+    await call.message.edit_text(f'Дневная норма калорий: {calories}')
     await state.finish()
 
 

@@ -8,6 +8,7 @@ from handlers import (
     nutritions,
     my_health,
     update_my_health,
+    calculate_calories,
     buy_content,
     program,
     nutrition,
@@ -38,7 +39,9 @@ from states import (
     get_next_nutrition,
     get_next_portion,
     ApproachState,
-    get_next_approach
+    get_next_approach,
+    CaloriesState,
+    get_activity
 )
 from keyboards import (
     move,
@@ -50,7 +53,8 @@ from keyboards import (
     buy,
     program_filter,
     nutrition_filter,
-    notification
+    notification,
+    activity_filter
 )
 
 from aiogram import Dispatcher, executor, types
@@ -77,6 +81,7 @@ dp.register_message_handler(nutritions, commands=["nutritions"], state="*")
 dp.register_message_handler(my_health, commands=["my_health"], state="*")
 dp.register_message_handler(approaches, commands=["approaches"], state="*")
 dp.register_callback_query_handler(update_my_health, text="update_subscribe", state="*"),
+dp.register_callback_query_handler(calculate_calories, text="calculate_calories", state="*")
 dp.register_callback_query_handler(buy_content, buy.filter(), state="*")
 dp.register_callback_query_handler(program, program_filter.filter(), state="*")
 dp.register_callback_query_handler(nutrition, nutrition_filter.filter(), state="*")
@@ -183,6 +188,12 @@ dp.register_callback_query_handler(
     state=SubscribeState.gender
 )
 
+'''Register CaloriesState'''
+dp.register_callback_query_handler(
+    get_activity,
+    activity_filter.filter(),
+    state=CaloriesState.activity
+)
 
 if __name__ == '__main__':
     scheduler.start()
