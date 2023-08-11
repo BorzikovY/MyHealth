@@ -1,31 +1,60 @@
-from typing import List
-
 from aiogram import types
+from aiogram.dispatcher import FSMContext
 
-from api import ApiClient, create_anonymous_user, register_user, create_admin_user
+from api import (
+    Telegram,
+    ApiClient,
+    create_anonymous_user,
+    register_user,
+    update_subscribe,
+    get_program,
+    get_nutrition,
+    get_approaches,
+    get_trainings
+)
 from keyboards import (
     start_keyboard,
-    create_filter_keyboard,
-    program as program_filter,
-    nutrition as nutrition_filter,
-    update_subscribe as subscribe_filter
+    create_my_health_keyboard,
+    filter_keyboard,
+    start_schedule_keyboard,
+    create_training_keyboard
 )
-from models import TelegramUser, Token, TrainingProgram, Nutrition, Training, Subscriber
 from notifications import scheduler
+from states import (
+    ProgramState,
+    NutritionState,
+    SubscribeState,
+    ScheduleState,
+    ApproachState,
+    Cycle,
+    Iterable
+)
+from models import (
+    TelegramUser,
+    Token,
+    TrainingProgram,
+    Nutrition,
+)
 
 
-async def send_welcome(message: types.Message):
+async def start(message: types.Message, state: FSMContext):
+    await state.finish()
     client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message.from_user)
 
-    await register_user(client, instance)
-    msg: str = "Привет 👋️ Я *спорт\-бот*, и я помогу тебе подобрать\n" \
-               "программу под твои интересы и физическую подготовку"
+    user: TelegramUser = await register_user(client, instance)
+    if user:
+        msg: str = f"Привет {user.first_name} {user.last_name} 👋️\n\n" \
+                   "Я <b>спорт-бот</b>, и я помогу тебе подобрать" \
+                   "программу под твои интересы и физическую подготовку"
+    else:
+        msg: str = "Введите /my_health, чтобы посмотреть список доступных функций\n\n" \
+                   "Если у вас возникли вопросы, обратитесь в <b>тех поддержку</b>"
 
-    await message.reply(msg, reply_markup=start_keyboard, parse_mode="MarkdownV2")
+    await message.reply(msg, reply_markup=start_keyboard, parse_mode="HTML")
 
 
-async def get_account_info(message: types.Message):
+async def account(message: types.Message):
     client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message.from_user)
 
@@ -39,11 +68,8 @@ async def get_account_info(message: types.Message):
     await message.reply(msg, parse_mode="HTML")
 
 
-async def subscribe(call: types.CallbackQuery):
-    await create_subscribe(call.message)
-
-
-async def create_subscribe(message: types.Message):
+async def subscribe(message: types.Message, state: FSMContext):
+    await state.finish()
     client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message.chat)
 
@@ -56,34 +82,27 @@ async def create_subscribe(message: types.Message):
     await message.answer(msg)
 
 
-async def put_subscribe(call: types.CallbackQuery, callback_data: dict):
-    for key, value in callback_data.copy().items():
-        try:
-            callback_data[key] = int(value)
-        except ValueError:
-            callback_data.pop(key)
-    callback_data["message"] = "Продукт был успешно преобритен! 🤑️"
-    await update_subscribe(call.message, callback_data)
+async def programs(message: types.Message, state: FSMContext):
+    await state.finish()
+    await Telegram.send_message(
+        message.from_user.id,
+        "Включить в подборку фильтрацию?",
+        reply_markup=filter_keyboard
+    )
+    await ProgramState.program_filter.set()
 
 
-async def update_subscribe(message: types.Message, data: dict):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(message.chat)
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        user = await client.update_user(
-            instance, token,
-            data={"subscriber": data}
-        )
-        if isinstance(user, TelegramUser):
-            await message.reply(data.get("message"))
-        else:
-            await message.reply("Произошла ошибка")
-    else:
-        await message.answer("Введите /start, чтобы зарегистрироваться")
+async def nutritions(message: types.Message, state: FSMContext):
+    await state.finish()
+    await Telegram.send_message(
+        message.from_user.id,
+        "Включить в подборку фильтрацию?",
+        reply_markup=filter_keyboard
+    )
+    await NutritionState.nutrition_filter.set()
 
 
-async def get_my_health(message: types.Message):
+async def my_health(message: types.Message):
     client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message.chat)
 
@@ -91,22 +110,13 @@ async def get_my_health(message: types.Message):
     if isinstance(token, Token):
         user: TelegramUser = await client.get_user(instance, token, cache=True)
         if subscriber := user.subscriber:
-            keyboard = types.InlineKeyboardMarkup(4).add(
-                types.InlineKeyboardButton("Посмотреть программу", callback_data=program_filter.new(
-                    id=subscriber.training_program if subscriber.training_program else 0
-                )),
-                types.InlineKeyboardButton("Посмотреть питание", callback_data=nutrition_filter.new(
-                    id=subscriber.sport_nutrition if subscriber.sport_nutrition else 0
-                ))
-            )
-            keyboard.add(
-                types.InlineKeyboardButton("Обновить данные", callback_data="filter_subscribe"),
-                types.InlineKeyboardButton("Запустить уведомление", callback_data="filter_schedule")
-            )
             await message.reply(
                 subscriber.message,
                 parse_mode="HTML",
-                reply_markup=keyboard
+                reply_markup=create_my_health_keyboard(
+                    sport_nutrition=subscriber.sport_nutrition if subscriber.sport_nutrition else 0,
+                    training_program=subscriber.training_program if subscriber.training_program else 0
+                )
             )
         else:
             await message.reply("Введите /subscribe, чтобы подписаться")
@@ -114,142 +124,105 @@ async def get_my_health(message: types.Message):
         await message.reply("Введите /start, чтобы зарегистрироваться")
 
 
-async def get_programs(message: types.Message, data: dict = None):
-    client = ApiClient()
-    instance: TelegramUser = create_admin_user()
+async def update_my_health(call: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    await call.message.edit_text(
+        "Введите возраст 👶️-🧓️",
+    )
+    await SubscribeState.age.set()
 
+
+async def buy_content(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.finish()
+    await call.answer("Внимание! Текущая программа будет заменена другой!", show_alert=True)
+    data = {key: value for key, value in callback_data.items() if value.isnumeric()}
+    if await update_subscribe(call.from_user, data):
+        await call.message.edit_text("Вы успешно преобрели продукт!")
+    else:
+        await call.message.edit_text("Продукт не был преобретен. Проверьте баланс или обратитесь в тех поддержку.")
+
+
+async def program(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.finish()
+    instance = await get_program(call.from_user, {"id": int(callback_data.get("id", 0))})
+    if isinstance(instance, TrainingProgram):
+        await call.message.answer(instance.message, parse_mode="HTML")
+    else:
+        msg = "Вы еще не преобрели тренировочную программу\n\n" \
+              "Введите /programs, чтобы просмотреть список доступных программ"
+        await call.message.answer(msg)
+
+
+async def nutrition(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.finish()
+    instance = await get_nutrition(call.from_user, {"id": int(callback_data.get("id", 0))})
+    if isinstance(instance, Nutrition):
+        await call.message.answer(instance.message, parse_mode="HTML")
+    else:
+        msg = "Вы еще не преобрели подписку на спортивное питание\n\n" \
+              "Введите /nutritions, чтобы просмотреть список спортивного питания"
+        await call.message.answer(msg)
+
+
+async def schedule(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    await state.finish()
+    msg = "Сконфигурируйте расписание самостоятельно или\n " \
+          "используйте параметры по умолчанию\n\n" \
+          "(уведомления будут приходить с понедельника по пятницу)"
+    await Telegram.send_message(
+        call.message.chat.id,
+        msg,
+        reply_markup=start_schedule_keyboard
+    )
+    await state.update_data({"program_id": int(callback_data.get("program_id", 0))})
+    await ScheduleState.weekdays.set()
+
+
+async def disable_schedule(call: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    if scheduler.get_job(str(call.from_user.id)):
+        scheduler.remove_job(str(call.from_user.id))
+    await Telegram.send_message(
+        call.from_user.id, "Уведомление успешно отменено!"
+    )
+
+
+async def approaches(message: types.Message, state: FSMContext):
+    await state.finish()
+    client = ApiClient()
+
+    instance: TelegramUser = create_anonymous_user(message.chat)
     token: Token = await client.get_token(instance)
     if isinstance(token, Token):
-        instances: list[TrainingProgram] = await client.get_programs(
-            instance,
-            token,
-            data=data,
-            cache=True
-        )
-        for program in instances:
-            program_keyboard = types.InlineKeyboardMarkup(2).add(
-                types.InlineKeyboardButton(
-                    f"{program.price} руб 💰️" if program.price > 0. else "Получить бесплатно ✅️",
-                    callback_data=subscribe_filter.new(
-                        training_program=program.id,
-                        sport_nutrition="None"
+        user: TelegramUser = await client.get_user(instance, token, cache=True)
+        if subscriber := user.subscriber:
+            if program_id := subscriber.training_program:
+                trainings = iter(Iterable([
+                    training.id for training in
+                    await get_trainings({"program_id": program_id})
+                ]))
+                if trainings.loop:
+                    instances = iter(
+                        Cycle(await get_approaches(
+                            message.from_user, {"training_id": next(trainings)}
+                        ))
                     )
-                ),
-                types.InlineKeyboardButton(
-                    text="Подробнее...",
-                    callback_data=program_filter.new(
-                        id=program.id
+                    approach = next(instances)
+                    await Telegram.send_message(
+                        message.from_user.id, approach.message,
+                        reply_markup=create_training_keyboard(), parse_mode="HTML"
                     )
+                    await state.update_data({"trainings": trainings, "approaches": instances})
+                    await ApproachState.next_approach.set()
+                else:
+                    await message.reply(
+                        "Текущая программа тренировок находится в разработке. Обратитесь в тех поддержку."
+                    )
+            else:
+                await message.reply(
+                    "Программа не найдена. Подпишитесь на одну из доступных программ /programs"
                 )
-            )
-            await message.answer(program.message_short,
-                                reply_markup=program_keyboard,
-                                parse_mode="HTML")
-        msg = "Список программ 🗒️" if instances else "Контента нет 😔️"
-        await message.reply(msg, reply_markup=create_filter_keyboard("filter_programs", len(instances)))
+        else:
+            await message.reply("Введите /subscribe, чтобы подписаться")
     else:
         await message.reply("Введите /start, чтобы зарегистрироваться")
-
-
-async def get_nutritions(message: types.Message):
-    client = ApiClient()
-    instance: TelegramUser = create_admin_user()
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        nutritions: List[Nutrition] = await client.get_nutritions(
-            instance, token,
-            cache=True,
-            data={}
-        )
-        for nutrition in nutritions:
-            nutrition_keyboard = types.InlineKeyboardMarkup(2).add(
-                types.InlineKeyboardButton(
-                    f"{nutrition.price} руб 💰️" if nutrition.price > 0. else "Получить бесплатно ✅️",
-                    callback_data=subscribe_filter.new(
-                        sport_nutrition=nutrition.id,
-                        training_program="None"
-                    )
-                ),
-                types.InlineKeyboardButton(
-                    text="Подробнее...",
-                    callback_data=nutrition_filter.new(
-                        id=nutrition.id
-                    )
-                )
-            )
-            await message.reply(nutrition.message_short,
-                                reply_markup=nutrition_keyboard,
-                                parse_mode="HTML")
-        await message.reply(
-            "Список спортивных добавок" if nutritions else "Контента нет(",
-            reply_markup=create_filter_keyboard("filter_nutritions", len(nutritions))
-        )
-    else:
-        await message.reply("Введите /start, чтобы начать...")
-
-
-async def get_trainings(message: types.Message):
-    client = ApiClient()
-    instance: TelegramUser = create_admin_user()
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        trainings: List[Training] = await client.get_trainings(
-            instance, token,
-            cache=True, data={}
-        )
-        msg = "Список тренировок"
-        for training in trainings:
-            msg += f"\n\n{training.name}:\n" \
-                   f"Описание: {training.description}"
-        await message.reply(msg if msg else "Контента нет(")
-    else:
-        await message.reply("Введите /start, чтобы начать...")
-
-
-async def get_program(call: types.CallbackQuery, callback_data: dict):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(data=call.message.chat)
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        id = int(callback_data.get("id", 0))
-        program: TrainingProgram = await client.get_program(
-            instance, token,
-            cache=True,
-            data={"id": id}
-        )
-        if isinstance(program, TrainingProgram):
-            await call.message.answer(program.message, parse_mode="HTML")
-        else:
-            await call.message.answer("Контента нет(")
-    else:
-        await call.message.answer("Введите /start, чтобы начать...")
-
-
-async def get_nutrition(call: types.CallbackQuery, callback_data: dict):
-    client = ApiClient()
-    instance: TelegramUser = create_anonymous_user(call.message.chat)
-
-    token: Token = await client.get_token(instance)
-    if isinstance(token, Token):
-        id = int(callback_data.get("id", 0))
-        nutrition: Nutrition = await client.get_nutrition(
-            instance, token,
-            cache=True,
-            data={"id": id}
-        )
-        if isinstance(nutrition, Nutrition):
-            await call.message.answer(nutrition.message, parse_mode="HTML")
-        else:
-            await call.message.answer("Контента нет(")
-    else:
-        await call.message.answer("Введите /start, чтобы начать...")
-
-
-async def send_notification(message: types.Message):
-    await message.bot.send_message(
-        message.from_user.id,
-        "Пора тренироваться!"
-    )

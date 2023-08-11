@@ -6,9 +6,15 @@ program_message = "<b>{name} | {group_name}</b>\n\n" \
                   "<pre>Среднее время одной тренировки: {avg_training_time} ⌚️</pre>\n\n" \
                   "<b>Описание</b> <i>{description}</i>"
 
-program_message_short = "<b>{name} | {group_name}</b>\n\n" \
-                        "<pre>Сложность:                      {difficulty} {difficulty_icon}</pre>\n" \
-                        "<pre>Длительность:                   {weeks} недель</pre>\n" \
+approach_message = "{exercise}\n" \
+                   "<pre>Время одного подхода: {time}</pre>\n" \
+                   "<pre>Кол-во подходов:      {repetition_count} раз</pre>\n" \
+                   "<pre>Время отдыха:         {rest}</pre>"
+
+exercise_message = "<b>{name}</b>\n" \
+                   "<a href=\"{image}\">&#8205;</a>\n" \
+                   "<a href=\"{video}\">&#8205;</a>\n" \
+                   "<b>Описание</b> <i>{description}</i>"
 
 user_message: str = "<b>Пользовательские данные</b>\n\n" \
                     "<pre>Имя:     {first_name}</pre>\n" \

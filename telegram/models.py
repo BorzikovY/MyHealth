@@ -9,9 +9,12 @@ from typing import List, Callable
 from messages import (
     program_message,
     user_message,
-    program_message_short,
     nutrition_message,
-    portion_message, training_message, subscriber_message,
+    portion_message,
+    training_message,
+    subscriber_message,
+    approach_message,
+    exercise_message,
 )
 from settings import config, SECRET_KEY
 
@@ -71,6 +74,11 @@ class Portion:
             description=self.description
         )
 
+    def filter(self, data: dict):
+        if data.get("nutrition_id"):
+            return data["nutrition_id"] == self.sport_nutrition
+        return True
+
     id: int
     name: str
     description: str
@@ -78,22 +86,19 @@ class Portion:
     proteins: float
     fats: float
     carbs: float
+    sport_nutrition: int
 
 
 @dataclass
 class Nutrition:
 
     def __post_init__(self):
-        self.message_short = nutrition_message.format(
+        self.message = nutrition_message.format(
             name=self.name,
             dosages=self.dosages,
             use=self.use,
             contraindications=self.contraindications,
             description=self.description
-        )
-
-        self.message = f"\n{'_'*50}\n".join(
-            ["<b>Доступные порции</b>"] + [Portion(**portion).message for portion in self.portions]
         )
 
     id: int
@@ -103,16 +108,43 @@ class Nutrition:
     use: str
     price: float
     contraindications: str
-    portions: List[Portion]
 
 
 @dataclass
 class Exercise:
-    id: int
+
+    def __post_init__(self):
+        self.message = exercise_message.format(
+            name=self.name,
+            description=self.description,
+            image=self.image,
+            video=self.video
+        )
+
     name: str
     description: str
     image: str
     video: str
+
+
+@dataclass
+class Approach:
+
+    def __post_init__(self):
+        self.exercise = Exercise(**self.exercise)
+        self.message = approach_message.format(
+            time=self.time,
+            repetition_count=self.repetition_count,
+            rest=self.rest,
+            exercise=self.exercise.message
+        )
+
+    id: int
+    time: timedelta
+    repetition_count: int
+    rest: timedelta
+    training: int
+    exercise: Exercise
 
 
 @dataclass
@@ -133,12 +165,18 @@ class Training:
             description=self.description
         )
 
+    def filter(self, data: dict):
+        if data.get("program_id"):
+            return data["program_id"] in self.training_programs
+        return True
+
     id: str
     name: str
     description: str
     difficulty: int
     time: str
     approach_count: int
+    training_programs: List[int]
 
 
 @dataclass
@@ -148,7 +186,7 @@ class TrainingProgram:
         difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
         group_name = self.group.name if self.group else "Общая подготовка"
         avg_training_time = self.avg_training_time if self.avg_training_time else "-"
-        self.message_short = program_message.format(
+        self.message = program_message.format(
             name=self.name, group_name=group_name,
             image="https://img2.goodfon.ru/original/1024x1024/c/e9/gym-man-woman-workout-fitness.jpg",
             difficulty=self.difficulty,
@@ -157,9 +195,6 @@ class TrainingProgram:
             training_count=self.training_count,
             avg_training_time=avg_training_time,
             description=self.description
-        )
-        self.message = f"\n{'_'*50}\n".join(
-            ["<b>Доступные тренировки</b>"] + [Training(**training).message for training in self.trainings]
         )
 
     def filter(self, data: dict):
@@ -174,7 +209,6 @@ class TrainingProgram:
     weeks: int
     price: float
     group: TrainingProgramGroup
-    trainings: Training
     avg_training_time: timedelta
     training_count: int
     difficulty: float

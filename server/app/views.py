@@ -17,16 +17,18 @@ from app.filters import (
     ProgramFilterBackend,
     NutritionFilterBackend,
     TrainingFilterBackend,
-    ExerciseFilterBackend,
+    ApproachFilterBackend,
+    PortionFilterBackend,
     duration,
     DataFilter,
 )
-from app.models import TrainingProgram, SportNutrition, Training, Exercise
+from app.models import TrainingProgram, SportNutrition, Training, Approach, Portion
 from app.permissions import (
     UnauthenticatedPost,
     AuthenticatedPost,
     SubscribePermission,
-    GroupPermission
+    GroupPermission,
+    OwnerPermission
 )
 from app.serializers import (
     UserSerializer,
@@ -35,7 +37,8 @@ from app.serializers import (
     ProgramSerializer,
     NutritionSerializer,
     TrainingSerializer,
-    ExerciseSerializer
+    ApproachSerializer,
+    PortionSerializer
 )
 
 
@@ -148,9 +151,9 @@ class ProgramApi(generics.GenericAPIView, metaclass=RestApi):
     Program api
     """
 
-    __methods__ = ["get", "post"]
+    __methods__ = ["get"]
     serializer_class = ProgramSerializer
-    permission_classes = (SubscribePermission,)
+    permission_classes = (IsAuthenticated,)
 
 
 class NutritionApi(generics.GenericAPIView, metaclass=RestApi):
@@ -158,9 +161,9 @@ class NutritionApi(generics.GenericAPIView, metaclass=RestApi):
     Nutrition api
     """
 
-    __methods__ = ["get", "post"]
+    __methods__ = ["get"]
     serializer_class = NutritionSerializer
-    permission_classes = (SubscribePermission,)
+    permission_classes = (IsAuthenticated,)
 
 
 class TrainingApi(generics.GenericAPIView, metaclass=RestApi):
@@ -170,17 +173,27 @@ class TrainingApi(generics.GenericAPIView, metaclass=RestApi):
 
     __methods__ = ["get"]
     serializer_class = TrainingSerializer
-    permission_classes = (SubscribePermission,)
+    permission_classes = (IsAuthenticated,)
 
 
-class ExerciseApi(generics.GenericAPIView, metaclass=RestApi):
+class ApproachApi(generics.GenericAPIView, metaclass=RestApi):
     """
-    Exercise api
+    Approach api
     """
 
     __methods__ = ["get"]
-    serializer_class = ExerciseSerializer
-    permission_classes = (SubscribePermission,)
+    serializer_class = ApproachSerializer
+    permission_classes = (OwnerPermission,)
+
+
+class PortionApi(generics.GenericAPIView, metaclass=RestApi):
+    """
+    Portion api
+    """
+
+    __methods__ = ["get"]
+    serializer_class = ApproachSerializer
+    permission_classes = (IsAuthenticated,)
 
 
 """
@@ -259,28 +272,48 @@ class TrainingListApi(viewsets.ModelViewSet):
             self.request.query_params.get('time'),
             data_class=duration
         )
+        instances = TrainingProgram.objects.filter(id=program_id)[:1]
+        filter_data = {"training_program_set": instances} if instances else {}
         queryset = filter(
             lambda note:
             first_filter(note.difficulty)
             and second_filter(note.time),
             Training.objects.filter(
-                training_program_set=TrainingProgram.objects.filter(id=program_id)[:1]
+                *filter_data
             )
         )
 
         return queryset
 
 
-class ExerciseListApi(viewsets.ModelViewSet):
-    serializer_class = ExerciseSerializer
-    filter_backends = (ExerciseFilterBackend,)
+class PortionListApi(viewsets.ModelViewSet):
+    serializer_class = PortionSerializer
+    filter_backends = (PortionFilterBackend,)
     permission_classes = (GroupPermission(groups=["Staff"]),)
-    queryset = Exercise.objects.all()
+    queryset = Portion.objects.all()
+
+    def filter_queryset(self, queryset):
+        nutrition_id = self.request.query_params.get('nutrition_id')
+        instance = SportNutrition.objects.filter(id=nutrition_id).first()
+        filter_data = {"training": instance} if instance else {}
+        queryset = Portion.objects.filter(
+            **filter_data
+        )
+        return queryset
+
+
+class ApproachListApi(viewsets.ModelViewSet):
+    serializer_class = ApproachSerializer
+    filter_backends = (ApproachFilterBackend,)
+    permission_classes = (OwnerPermission,)
+    queryset = Approach.objects.all()
 
     def filter_queryset(self, queryset):
         training_id = self.request.query_params.get('training_id')
-        queryset = Exercise.objects.filter(
-            approach_set__training=Training.objects.filter(id=training_id)[:1]
+        instance = Training.objects.filter(id=training_id).first()
+        filter_data = {"training": instance} if instance else {}
+        queryset = Approach.objects.filter(
+            **filter_data
         )
 
         return queryset

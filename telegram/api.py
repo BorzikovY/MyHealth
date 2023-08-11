@@ -8,13 +8,33 @@ import jwt
 
 import aiofiles
 from aiohttp import ClientSession
+from aiogram import Bot
 
-from models import TelegramUser, Token, TrainingProgram, Subscriber, Nutrition, Training
-from settings import SECRET_KEY, HOST, ADMIN_TELEGRAM_ID, ADMIN_CHAT_ID, CACHE_UPDATE_TIME
+from models import (
+    TelegramUser,
+    Token,
+    TrainingProgram,
+    Subscriber,
+    Nutrition,
+    Training,
+    Approach,
+    Portion
+)
+from settings import (
+    SECRET_KEY,
+    HOST,
+    ADMIN_TELEGRAM_ID,
+    ADMIN_CHAT_ID,
+    CACHE_UPDATE_TIME,
+    BOT_TOKEN
+)
 
 program_lock = asyncio.Lock()
 nutrition_lock = asyncio.Lock()
 training_lock = asyncio.Lock()
+portion_lock = asyncio.Lock()
+
+Telegram = Bot(token=BOT_TOKEN)
 
 
 class IOHandler:
@@ -84,7 +104,8 @@ class JsonCacheHandler(BaseCacheHandler):
         "tokens": "tokens/{file}",
         "programs": "programs/{file}",
         "nutritions": "nutritions/{file}",
-        "trainings": "trainings/{file}"
+        "trainings": "trainings/{file}",
+        "portions": "portions/{file}"
     }
     ext = "json"
 
@@ -125,9 +146,24 @@ class JsonCacheHandler(BaseCacheHandler):
         return [Nutrition(**nutrition) for nutrition in nutritions] if nutritions else None
 
     async def get_trainings(self, data: dict, _id: str) -> List[Training]:
-        trainings = [self.from_json(content) for content in await self.trainings.get_all()]
+        if data.get(_id):
+            training = self.from_json(await self.trainings.get(f"{data[_id]}.{self.ext}"))
+            return Training(**training) if training else None
 
-        return [Training(**training) for training in trainings] if trainings else None
+        trainings = [json.loads(content) for content in await self.trainings.get_all()]
+        instances = [Training(**training) for training in trainings]
+
+        return [instance for instance in instances if instance.filter(data)]
+
+    async def get_portions(self, data: dict, _id: str) -> List[Portion]:
+        if data.get(_id):
+            portion = self.from_json(await self.portions.get(f"{data[_id]}.{self.ext}"))
+            return Portion(**portion) if portion else None
+
+        portions = [json.loads(content) for content in await self.portions.get_all()]
+        instances = [Portion(**portion) for portion in portions]
+
+        return [instance for instance in instances if instance.filter(data)]
 
     async def get_user(self, data: dict, _id: str) -> TelegramUser:
         async with self.user_lock:
@@ -166,6 +202,13 @@ class JsonCacheHandler(BaseCacheHandler):
                 tasks.append(self.trainings.post(json.dumps(data), f"{data.get(_id)}.{self.ext}"))
             await asyncio.gather(*tasks)
 
+    async def update_portions(self, formatted_data: dict, _id: str):
+        async with portion_lock:
+            tasks = []
+            for data in formatted_data:
+                tasks.append(self.portions.post(json.dumps(data), f"{data.get(_id)}.{self.ext}"))
+            await asyncio.gather(*tasks)
+
     async def update_token(self, formatted_data: dict, _id: str) -> None:
         payload = jwt.decode(
             formatted_data.get("access"),
@@ -180,19 +223,29 @@ class JsonCacheHandler(BaseCacheHandler):
         ))
         existing_data.update({"subscriber": formatted_data})
         async with self.user_lock:
-            await self.users.post(self.to_json(existing_data), f"{existing_data.get(_id)}.{self.ext}")
+            await self.users.post(
+                self.to_json(existing_data),
+                f"{formatted_data.get(_id)}.{self.ext}"
+            )
 
     async def update_user(self, formatted_data: dict, _id: str) -> None:
+        existing_data = self.from_json(await self.users.get(
+            f"{formatted_data.get(_id)}.{self.ext}"
+        ))
+        existing_data.update(formatted_data)
         async with self.user_lock:
-            await self.users.post(self.to_json(formatted_data), f"{formatted_data.get(_id)}.{self.ext}")
+            await self.users.post(
+                self.to_json(formatted_data),
+                f"{formatted_data.get(_id)}.{self.ext}"
+            )
 
 
-async def auth_user(client, registered_user: TelegramUser):
+async def auth_user(client, registered_user: TelegramUser) -> TelegramUser:
     asyncio.create_task(client.get_token(registered_user))
     return registered_user
 
 
-async def register_user(client, anonymous_user: TelegramUser):
+async def register_user(client, anonymous_user: TelegramUser) -> TelegramUser:
     telegram_user = await client.create_user(anonymous_user)
     if isinstance(telegram_user, TelegramUser):
         return await auth_user(client, telegram_user)
@@ -213,6 +266,119 @@ def create_admin_user() -> TelegramUser:
     )
 
 
+async def get_programs(data: dict = None) -> List[TrainingProgram] | List:
+    client = ApiClient()
+    instance: TelegramUser = create_admin_user()
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        instances: list[TrainingProgram] = await client.get_programs(
+            instance, token,
+            cache=True, data=data
+        )
+        return instances
+    return []
+
+
+async def get_program(message, data: dict = None) -> TrainingProgram | None:
+    client = ApiClient()
+    instance: TelegramUser = create_anonymous_user(data=message)
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        program: TrainingProgram = await client.get_program(
+            instance, token,
+            cache=True,
+            data=data
+        )
+        return program
+    return None
+
+
+async def get_approaches(message, data) -> List[Approach]:
+    client = ApiClient()
+    instance: TelegramUser = create_anonymous_user(message)
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        instances: list[TrainingProgram] = await client.get_approaches(
+            instance, token,
+            cache=True, data=data
+        )
+        return instances
+    return []
+
+
+async def get_nutritions(data: dict = None) -> List[Nutrition] | List:
+    client = ApiClient()
+    instance: TelegramUser = create_admin_user()
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        instances: List[Nutrition] = await client.get_nutritions(
+            instance, token,
+            cache=True, data=data
+        )
+        return instances
+    return []
+
+
+async def get_nutrition(message, data: dict = None) -> Nutrition | None:
+    client = ApiClient()
+    instance: TelegramUser = create_anonymous_user(data=message)
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        nutrition: Nutrition = await client.get_nutrition(
+            instance, token,
+            cache=True,
+            data=data
+        )
+        return nutrition
+    return None
+
+
+async def get_trainings(data: dict = None) -> List[Training] | List:
+    client = ApiClient()
+    instance: TelegramUser = create_admin_user()
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        instances: List[Training] = await client.get_trainings(
+            instance, token,
+            cache=True, data=data
+        )
+        return instances
+    return []
+
+
+async def get_portions(data: dict = None) -> List[Portion] | List:
+    client = ApiClient()
+    instance: TelegramUser = create_admin_user()
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        instances: List[Portion] = await client.get_portions(
+            instance, token,
+            cache=True, data=data
+        )
+        return instances
+    return []
+
+
+async def update_subscribe(message, data: dict) -> bool | None:
+    client = ApiClient()
+    instance: TelegramUser = create_anonymous_user(message)
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        user = await client.update_user(
+            instance, token,
+            data={"subscriber": data}
+        )
+        return isinstance(user, TelegramUser)
+    return None
+
+
 class ApiClient:
 
     cache_class = JsonCacheHandler
@@ -229,6 +395,15 @@ class ApiClient:
         if data is not None:
             headers.update(data)
         return headers
+
+    @staticmethod
+    def set_query_data(url: str, data: dict):
+        if data:
+            params = "&".join(
+                [f"{key}={value}" for key, value in data.items()]
+            )
+            url += f"?{params}"
+        return url
 
     async def send_request(
             self,
@@ -298,10 +473,26 @@ class ApiClient:
                 await self.get_nutritions(admin, token, data=None, cache=False)
             await asyncio.sleep(CACHE_UPDATE_TIME)
 
+    async def update_training_cache(self, admin: TelegramUser):
+        while True:
+            token: Token = await self.get_token(admin)
+            if isinstance(token, Token):
+                await self.get_trainings(admin, token, data=None, cache=False)
+            await asyncio.sleep(CACHE_UPDATE_TIME)
+
+    async def update_portion_cache(self, admin: TelegramUser):
+        while True:
+            token: Token = await self.get_token(admin)
+            if isinstance(token, Token):
+                await self.get_portions(admin, token, data=None, cache=False)
+            await asyncio.sleep(CACHE_UPDATE_TIME)
+
     async def update_cache(self, dispatcher):
         instance: TelegramUser = create_admin_user()
         asyncio.create_task(self.update_program_cache(instance))
         asyncio.create_task(self.update_nutrition_cache(instance))
+        asyncio.create_task(self.update_training_cache(instance))
+        asyncio.create_task(self.update_portion_cache(instance))
 
     async def get_token(self, user: TelegramUser, cache=True):
         url = f"{self.base_url}/api/token/"
@@ -366,9 +557,7 @@ class ApiClient:
             )
             if programs is not None:
                 return programs
-        if kwargs.get("data"):
-            params = "&".join([f"{key}={value}" for key, value in kwargs["data"].items()])
-            url += f"?{params}"
+        url = self.set_query_data(url, kwargs.get("data"))
         headers = self.get_headers(token.access_data())
         return await self.send_request(
             url,
@@ -381,7 +570,26 @@ class ApiClient:
         )
 
     @check_token
-    async def get_nutritions(self, user: TelegramUser, token: Token, **kwargs) -> Nutrition:
+    async def get_program(self, user: TelegramUser, token: Token, **kwargs) -> TrainingProgram:
+        if kwargs.get("cache") and not program_lock.locked():
+            program = await self.get_cache(
+                "id", kwargs.get("data"), self.handler.get_programs
+            )
+            if program is not None:
+                return program
+        url = f"{self.base_url}/api/program/{kwargs.get('data', {}).get('id', 0)}/"
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "get",
+            200,
+            TrainingProgram,
+            "id"
+        )
+
+    @check_token
+    async def get_nutritions(self, user: TelegramUser, token: Token, **kwargs) -> List[Nutrition]:
         url = f"{self.base_url}/api/nutrition/list/"
         if kwargs.get("cache") and not nutrition_lock.locked():
             nutritions = await self.get_cache(
@@ -401,14 +609,34 @@ class ApiClient:
         )
 
     @check_token
-    async def get_trainings(self, user: TelegramUser, token: Token, **kwargs) -> Training:
-        url = f"{self.base_url}/api/training/list/?program_id=2"
+    async def get_nutrition(self, user: TelegramUser, token: Token, **kwargs) -> Nutrition:
+        if kwargs.get("cache") and not nutrition_lock.locked():
+            nutrition = await self.get_cache(
+                "id", kwargs.get("data"), self.handler.get_nutritions
+            )
+            if nutrition is not None:
+                return nutrition
+        url = f"{self.base_url}/api/nutrition/{kwargs.get('data', {}).get('id', 0)}/"
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "get",
+            200,
+            Nutrition,
+            "id"
+        )
+
+    @check_token
+    async def get_trainings(self, user: TelegramUser, token: Token, **kwargs) -> List[Training]:
+        url = f"{self.base_url}/api/training/list/"
         if kwargs.get("cache") and not training_lock.locked():
             trainings = await self.get_cache(
                 "id", kwargs.get("data"), self.handler.get_trainings
             )
             if trainings is not None:
                 return trainings
+        url = self.set_query_data(url, kwargs.get("data"))
         headers = self.get_headers(token.access_data())
         return await self.send_request(
             url,
@@ -418,6 +646,45 @@ class ApiClient:
             Training,
             "id",
             self.handler.update_trainings if not kwargs.get("cache") else None
+        )
+
+    @check_token
+    async def get_portions(self, user: TelegramUser, token: Token, **kwargs) -> List[Portion]:
+        url = f"{self.base_url}/api/portion/list/"
+        if kwargs.get("cache") and not portion_lock.locked():
+            portions = await self.get_cache(
+                "id", kwargs.get("data"), self.handler.get_portions
+            )
+            if portions is not None:
+                return portions
+        url = self.set_query_data(url, kwargs.get("data"))
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "get",
+            200,
+            Portion,
+            "id",
+            self.handler.update_portions if not kwargs.get("cache") else None
+        )
+
+    @check_token
+    async def get_approaches(self, user: TelegramUser, token: Token, **kwargs) -> List[Approach]:
+        url = f"{self.base_url}/api/approach/list/"
+        if kwargs.get("data"):
+            params = "&".join(
+                [f"{key}={value}" for key, value in kwargs["data"].items()]
+            )
+            url += f"?{params}"
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "get",
+            200,
+            Approach,
+            "id"
         )
 
     @check_token
@@ -448,44 +715,4 @@ class ApiClient:
             "telegram_id",
             self.handler.update_user,
             data=json.dumps(kwargs.get("data", {}))
-        )
-
-    @check_token
-    async def get_program(self, user: TelegramUser, token: Token, **kwargs) -> TrainingProgram:
-        if kwargs.get("cache") and not program_lock.locked():
-            program = await self.get_cache(
-                "id", kwargs.get("data"), self.handler.get_programs
-            )
-            if program is not None:
-                return program
-        data = kwargs.get("data", {})
-        url = f"{self.base_url}/api/program/{data.get('id', 0)}/"
-        headers = self.get_headers(token.access_data())
-        return await self.send_request(
-            url,
-            headers,
-            "get",
-            200,
-            TrainingProgram,
-            "id"
-        )
-
-    @check_token
-    async def get_nutrition(self, user: TelegramUser, token: Token, **kwargs) -> Nutrition:
-        if kwargs.get("cache") and not nutrition_lock.locked():
-            nutrition = await self.get_cache(
-                "id", kwargs.get("data"), self.handler.get_nutritions
-            )
-            if nutrition is not None:
-                return nutrition
-        data = kwargs.get("data", {})
-        url = f"{self.base_url}/api/nutrition/{data.get('id')}/"
-        headers = self.get_headers(token.access_data())
-        return await self.send_request(
-            url,
-            headers,
-            "get",
-            200,
-            Nutrition,
-            "id"
         )

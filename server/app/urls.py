@@ -12,11 +12,13 @@ from app.views import (
     ProgramApi,
     NutritionApi,
     TrainingApi,
-    ExerciseApi,
+    ApproachApi,
+    PortionApi,
     ProgramListApi,
     NutritionListApi,
     TrainingListApi,
-    ExerciseListApi
+    ApproachListApi,
+    PortionListApi
 )
 
 api_routes = [
@@ -25,11 +27,13 @@ api_routes = [
     path("program/<int:program_id>/", ProgramApi.as_view(), name="program"),
     path("nutrition/<int:nutrition_id>/", NutritionApi.as_view(), name="nutrition"),
     path("training/<int:training_id>/", TrainingApi.as_view(), name="training"),
-    path("exercise/<int:exercise_id>/", ExerciseApi.as_view(), name="exercise"),
+    path("approach/<int:approach_id>/", ApproachApi.as_view(), name="approach"),
+    path("portion/<int:portion_id>/", PortionApi.as_view(), name="portion"),
     path("program/list/", ProgramListApi.as_view({'get': 'list'}), name="program-list"),
     path("nutrition/list/", NutritionListApi.as_view({'get': 'list'}), name="nutrition-list"),
     path("training/list/", TrainingListApi.as_view({'get': 'list'}), name="training-list"),
-    path("exercise/list/", ExerciseListApi.as_view({'get': 'list'}), name="exercise-list")
+    path("approach/list/", ApproachListApi.as_view({'get': 'list'}), name="approach-list"),
+    path("portion/list/", PortionListApi.as_view({'get': 'list'}), name="portion-list")
 ]
 
 
@@ -59,7 +63,7 @@ SchemaView = get_schema_view(
 urlpatterns = [
     path("", include(api_routes)),
     path("token/", TokenObtainPairView.as_view(), name="token_obtain"),
-    path("token/refresh", TokenRefreshView.as_view(), name="token_refresh"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path(
         "swagger<format>/", SchemaView.without_ui(cache_timeout=0), name="schema-json"
     ),
