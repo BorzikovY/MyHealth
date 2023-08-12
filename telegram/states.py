@@ -22,7 +22,7 @@ from keyboards import (
     create_op_keyboard,
     create_content_keyboard,
     create_move_keyboard,
-    create_training_keyboard, location_keyboard
+    create_training_keyboard
 )
 from notifications import scheduler
 

@@ -13,7 +13,8 @@ from handlers import (
     program,
     nutrition,
     schedule,
-    approaches
+    approaches,
+    disable_schedule
 )
 from notifications import scheduler
 from states import (
@@ -81,6 +82,7 @@ dp.register_message_handler(nutritions, commands=["nutritions"], state="*")
 dp.register_message_handler(my_health, commands=["my_health"], state="*")
 dp.register_message_handler(approaches, commands=["approaches"], state="*")
 dp.register_callback_query_handler(update_my_health, text="update_subscribe", state="*"),
+dp.register_callback_query_handler(disable_schedule, text="quit_notification", state="*")
 dp.register_callback_query_handler(calculate_calories, text="calculate_calories", state="*")
 dp.register_callback_query_handler(buy_content, buy.filter(), state="*")
 dp.register_callback_query_handler(program, program_filter.filter(), state="*")

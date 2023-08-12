@@ -17,7 +17,7 @@ services:
       - static_data:/usr/src/server/static
       - media_data:/usr/src/server/media
     environment:
-      - env_file=.env.dev
+      - env_file=.env.prod
     ports:
       - "8000:8000"
     depends_on:
@@ -51,7 +51,7 @@ services:
       - ./certbot/conf:/etc/letsencrypt/:ro
       - cache_data:/usr/src/telegram/cache/
     environment:
-      - env_file=.env.dev
+      - env_file=.env.prod
 
 volumes:
   postgres_data:
