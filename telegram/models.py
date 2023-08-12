@@ -239,6 +239,10 @@ class Subscriber:
     @property
     def is_kfc_valid(self):
         return all([self.age, self.height, self.weight]) and (self.gender in ['female', 'male'])
+    
+    @property
+    def water_norm(self):
+        return (self.weight*30)/1000
 
     def __post_init__(self):
         self.message = subscriber_message.format(
@@ -246,7 +250,8 @@ class Subscriber:
             age_prefix=self.age_prefix,
             height=self.height if self.height is not None else "?",
             weight=self.weight if self.weight is not None else "?",
-            gender_icon=self.gender_icon
+            gender_icon=self.gender_icon,
+            water_norm=self.water_norm
         )
 
     telegram_id: int
