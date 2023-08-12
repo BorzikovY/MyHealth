@@ -27,6 +27,7 @@ subscriber_message: str = "<b>Личная информация</b>\n\n" \
                           "<pre>Вес:     {weight} кг</pre>\n" \
                           "<pre>Гендер:  {gender_icon}</pre>\n" \
                           "<pre>Суточная норма воды: {water_norm} л</pre>\n" \
+                          "<pre>Индекс массы тела: {bmi}</pre>\n" \
 
 nutrition_message = "<b>{name}</b>\n\n" \
                     "<pre>Объем:            {dosages}</pre>\n" \

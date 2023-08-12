@@ -243,6 +243,10 @@ class Subscriber:
     @property
     def water_norm(self):
         return (self.weight*30)/1000
+    
+    @property
+    def bmi(self):
+        return round(self.weight/(self.height**2), 1)
 
     def __post_init__(self):
         self.message = subscriber_message.format(
@@ -251,7 +255,8 @@ class Subscriber:
             height=self.height if self.height is not None else "?",
             weight=self.weight if self.weight is not None else "?",
             gender_icon=self.gender_icon,
-            water_norm=self.water_norm
+            water_norm=self.water_norm,
+            bmi = self.bmi
         )
 
     telegram_id: int

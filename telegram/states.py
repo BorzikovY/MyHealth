@@ -269,9 +269,9 @@ async def get_activity(call: types.CallbackQuery, callback_data: dict, state: FS
     data = await state.get_data()
     match data['gender']:
         case 'male':
-            calories = ((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] + 5)) * activity
+            calories = int(((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] + 5)) * activity)
         case 'female':
-            calories = ((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] - 161)) * activity
+            calories = int(((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] - 161)) * activity)
     await call.message.edit_text(f'Дневная норма калорий: {calories}')
     await state.finish()
 
