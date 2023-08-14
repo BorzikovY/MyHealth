@@ -219,7 +219,7 @@ class TrainingProgram:
 class Subscriber:
 
     @property
-    def age_prefix(self):
+    def age_prefix(self) -> str:
         if self.age:
             end = int(str(self.age)[-1])
             if end == 1:
@@ -229,7 +229,8 @@ class Subscriber:
         return "лет"
 
     @property
-    def gender_icon(self):
+    def gender_icon(self) -> str:
+        '''Возвращает иконку, соответствующую гендеру'''
         if self.gender == "male":
             return "👨"
         elif self.gender == "female":
@@ -237,16 +238,28 @@ class Subscriber:
         return "🚁️"
     
     @property
-    def is_kfc_valid(self):
+    def is_kfc_valid(self) -> bool:
+        '''Проверяет наличие данных, необходимых для подсчета дневной нормы калорий'''
         return all([self.age, self.height, self.weight]) and (self.gender in ['female', 'male'])
     
     @property
-    def water_norm(self):
+    def water_norm(self) -> float:
+        '''Возвращает суточную норму воды'''
         return (self.weight*30)/1000
     
     @property
-    def bmi(self):
-        return round(self.weight/(self.height**2), 1)
+    def bmi(self) -> str:
+        '''Возвращает индекс массы тела и его расшифровку'''
+        bmi = round(self.weight/(self.height**2), 1)
+        if bmi < 18.5:
+            return f'{bmi} - дефицит массы тела'
+        elif bmi >= 18.5 and bmi <= 24.9:
+            return f'{bmi} - нормальный вес'
+        if bmi >= 25 and bmi <= 30:
+            return f'{bmi} - избыточный вес'
+        if bmi > 30:
+            return f'{bmi} - ожирение'
+        
 
     def __post_init__(self):
         self.message = subscriber_message.format(
