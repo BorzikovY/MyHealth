@@ -200,9 +200,18 @@ class TrainingProgram:
             return f"{int(minutes // 60)}ч {int(minutes % 60)}м"
         return "-"
 
+    @property
+    def week_prefix(self) -> str:
+        if self.weeks:
+            end = int(str(self.weeks)[-1])
+            if end == 1 and self.weeks != 11:
+                return "неделя"
+            elif end in range(2, 5) and self.weeks not in range(12, 15):
+                return "недели"
+        return "недель"
+
     def __post_init__(self):
-        # difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
-        difficulty_icon = "💪️"
+        difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
         group_name = self.group.name if self.group else "Общая подготовка"
         self.message = program_message.format(
             name=self.name, group_name=group_name,
@@ -210,6 +219,7 @@ class TrainingProgram:
             difficulty=self.difficulty,
             difficulty_icon=difficulty_icon,
             weeks=self.weeks,
+            week_prefix=self.week_prefix,
             training_count=self.training_count,
             avg_training_time=self.convert_time(self.avg_training_time),
             description=self.description
@@ -267,12 +277,12 @@ class Subscriber:
     @property
     def bmi(self) -> str:
         '''Возвращает индекс массы тела и его расшифровку'''
-        bmi = round(self.weight/(self.height**2), 1)
+        bmi = round(self.weight/(0.0001*self.height**2), 1)
         if bmi < 18.5:
             return f'{bmi} - дефицит массы тела'
-        elif bmi >= 18.5 and bmi <= 24.9:
+        elif 18.5 <= bmi <= 24.9:
             return f'{bmi} - нормальный вес'
-        elif bmi >= 25 and bmi <= 30:
+        elif 25 <= bmi <= 30:
             return f'{bmi} - избыточный вес'
         elif bmi > 30:
             return f'{bmi} - ожирение'
@@ -285,7 +295,7 @@ class Subscriber:
             weight=self.weight if self.weight is not None else "?",
             gender_icon=self.gender_icon,
             water_norm=self.water_norm,
-            bmi = self.bmi
+            bmi=self.bmi
         )
 
     telegram_id: int

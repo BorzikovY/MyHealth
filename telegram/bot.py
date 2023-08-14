@@ -60,18 +60,8 @@ from keyboards import (
     Subscriber,
     Program,
     Schedule,
-    move,
-    _filter,
-    week_filter,
-    difficulty_filter,
-    gender_filter,
-    schedule_filter,
-    buy,
-    program_filter,
-    nutrition_filter,
-    notification,
-    activity_filter,
-    info_filter
+    Activity,
+    Info
 )
 
 from aiogram import Dispatcher, types, Router
@@ -83,6 +73,7 @@ register_router = Router()
 subscribe_router = Router()
 register_router.message.middleware(RegisterMiddleware())
 subscribe_router.message.middleware(SubscribeMiddleware())
+subscribe_router.callback_query.middleware(SubscribeMiddleware())
 
 
 @dp.callback_query(text.Text("quit"))
@@ -100,10 +91,12 @@ dp.include_router(register_router)
 
 subscribe_router.message.register(my_health, text.Text(COMMANDS["my_health"]))
 subscribe_router.message.register(approaches, text.Text(COMMANDS["approaches"]))
+subscribe_router.callback_query.register(calculate_calories, text.Text("calculate_calories"))
 dp.include_router(subscribe_router)
 
 
 dp.message.register(start, command.Command("start"))
+dp.message.register(info, text.Text(COMMANDS["info"]))
 dp.message.register(programs, text.Text(COMMANDS["programs"]))
 dp.message.register(nutritions, text.Text(COMMANDS["nutritions"]))
 dp.callback_query.register(update_my_health, text.Text("update_subscribe"))
@@ -111,8 +104,6 @@ dp.callback_query.register(disable_schedule, text.Text("disable_schedule"))
 dp.callback_query.register(schedule, text.Text("set_schedule"))
 dp.callback_query.register(buy_content, Content.filter())
 dp.callback_query.register(program, ID.filter())
-dp.message.register(info, command.Command("info"))
-dp.callback_query.register(calculate_calories, text.Text("calculate_calories"))
 
 """Register Schedule states"""
 
@@ -213,15 +204,15 @@ dp.callback_query.register(
 '''Register CaloriesState'''
 dp.callback_query.register(
     get_activity,
-    activity_filter.filter(),
-    state=CaloriesState.activity
+    Activity.filter(),
+    CaloriesState.activity
 )
 
 '''Register InfoState'''
 dp.callback_query.register(
     get_info,
-    info_filter.filter(),
-    state=InfoState.info
+    Info.filter(),
+    InfoState.info
 )
 
 

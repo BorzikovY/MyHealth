@@ -26,7 +26,9 @@ from keyboards import (
     Move,
     Schedule,
     Subscriber,
-    Program
+    Program,
+    Info,
+    Activity
 )
 from messages import (
     info_my_health_message,
@@ -282,31 +284,32 @@ async def get_gender(call: types.CallbackQuery, callback_data: Subscriber, state
         await call.message.edit_text("Данные были успешно обновлены!")
     else:
         await call.message.edit_text("Что-то пошло не так")
-    await state.clear()
 
 
-async def get_activity(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
-    activity = float(callback_data.get('activity'))
+async def get_activity(call: types.CallbackQuery, callback_data: Activity, state: FSMContext):
     data = await state.get_data()
+    A = callback_data.value
     match data['gender']:
         case 'male':
-            calories = int(((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] + 5)) * activity)
+            calories = int(((10 * data['weight']) + (6.25 * data['height']) - (5 * data['age'] + 5)) * A)
         case 'female':
-            calories = int(((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] - 161)) * activity)
+            calories = int(((10 * data['weight']) + (6.25 * data['height']) - (5 * data['age'] - 161)) * A)
+        case _:
+            calories = None
     await call.message.edit_text(f'Дневная норма калорий: {calories}')
-    await state.clear()
 
 
-async def get_info(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
-    section = callback_data.get('section')
-    match section:
+async def get_info(call: types.CallbackQuery, callback_data: Info, state: FSMContext):
+    match callback_data.section:
         case '/my_health':
             info = info_my_health_message
         case '/account':
             info = info_account_message
         case '/approaches':
             info = info_approaches_message
-    await call.message.edit_text(info)
+        case _:
+            info = None
+    await call.answer(info)
 
 
 async def send_nutritions(call: types.CallbackQuery, state: FSMContext, direction: int = 1):

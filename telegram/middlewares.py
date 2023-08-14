@@ -1,6 +1,6 @@
 from typing import Callable, Dict, Any, Awaitable, Tuple
 from aiogram import BaseMiddleware
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 
 from api import ApiClient, create_anonymous_user
 from models import TelegramUser, Token, Subscriber
@@ -40,12 +40,11 @@ class RegisterMiddleware(BaseMiddleware):
 class SubscribeMiddleware(BaseMiddleware):
     async def __call__(
             self,
-            handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
-            event: Message,
+            handler: Callable[[CallbackQuery, Dict[str, Any]], Awaitable[Any]],
+            event: CallbackQuery,
             data: Dict[str, Any]
     ) -> Any:
         client = ApiClient()
-
         if args := await is_registered(client, event.from_user):
             if subscriber := await is_authenticated(client, args):
                 data.update({"client": client, "subscriber": subscriber})
@@ -54,4 +53,3 @@ class SubscribeMiddleware(BaseMiddleware):
                 return event.answer("Нажмите на кнопку <b>Подписаться 🎁</b>", parse_mode="HTML")
         else:
             await event.answer("Введите /start, чтобы зарегистрироваться")
-

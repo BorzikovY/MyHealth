@@ -37,6 +37,14 @@ class Program(CallbackData, prefix="content"):
     weeks: Optional[str] = None
 
 
+class Activity(CallbackData, prefix="activity"):
+    value: float
+
+
+class Info(CallbackData, prefix="info"):
+    section: str
+
+
 class Subscriber(CallbackData, prefix="subscriber"):
     gender: str = "helicopter"
 
@@ -153,10 +161,34 @@ def create_schedule_keyboard():
     return keyboard_builder.as_markup()
 
 
+def create_activity_keyboard():
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.button(text="Сидячий образ жизни", callback_data=Activity(value=1.2))
+    keyboard_builder.button(text="Умеренная активность", callback_data=Activity(value=1.375))
+    keyboard_builder.button(text="Средняя активность", callback_data=Activity(value=1.55))
+    keyboard_builder.button(text="Интенсивные нагрузки", callback_data=Activity(value=1.725))
+    keyboard_builder.button(text="Активные занятия спортом", callback_data=Activity(value=1.9))
+
+    keyboard_builder.adjust(2, 2, 1)
+    return keyboard_builder.as_markup()
+
+
+def create_info_keyboard():
+    keyboard_builder = InlineKeyboardBuilder()
+
+    keyboard_builder.button(text="Мое здоровье 🫀️", callback_data=Info(section='/my_health'))
+    keyboard_builder.button(text="Мои данные 📃️", callback_data=Info(section='/account'))
+    keyboard_builder.button(text="Текущая тренировка ⏳", callback_data=Info(section='/approaches'))
+
+    keyboard_builder.adjust(1, 1, 1)
+    return keyboard_builder.as_markup()
+
+
 COMMANDS = {
     "subscribe": "Подписаться 🎁",
     "my_health": "Мое здоровье 🫀️",
     "account": "Мои данные 📃️",
+    "info": "Информация о разделах ❓️",
     "programs": "Программы тренировок 🎽",
     "nutritions": "Спортивное питание 🥑",
     "approaches": "Текущая тренировка ⏳"
@@ -170,6 +202,9 @@ start_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, keyboard=[
         KeyboardButton(text=COMMANDS["account"])
     ],
     [
+        KeyboardButton(text=COMMANDS["info"])
+    ],
+    [
         KeyboardButton(text=COMMANDS["programs"]),
         KeyboardButton(text=COMMANDS["nutritions"]),
         KeyboardButton(text=COMMANDS["approaches"])
@@ -177,36 +212,5 @@ start_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, keyboard=[
 ])
 
 balance_keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-    InlineKeyboardButton(text="Паполнить баланс 🤑", callback_data="payment")
+    InlineKeyboardButton(text="Пополнить баланс 🤑", callback_data="payment")
 ]])
-
-activity_keyboard = types.InlineKeyboardMarkup(5).add(
-    types.InlineKeyboardButton("Сидячий образ жизни", callback_data=activity_filter.new(
-        activity=1.2
-    )),
-    types.InlineKeyboardButton("Умеренная активность", callback_data=activity_filter.new(
-        activity=1.375
-    )),
-    types.InlineKeyboardButton("Средняя активность", callback_data=activity_filter.new(
-        activity=1.55
-    ))
-)
-activity_keyboard.add(
-    types.InlineKeyboardButton("Интенсивные нагрузки", callback_data=activity_filter.new(
-        activity=1.725
-    )),
-    types.InlineKeyboardButton("Активные занятия спортом", callback_data=activity_filter.new(
-        activity=1.9
-    ))
-)
-info_keyboard = types.InlineKeyboardMarkup(3).add(
-    types.InlineKeyboardButton("Мое здоровье 🫀️", callback_data=info_filter.new(
-        section='/my_health'
-    )),
-    types.InlineKeyboardButton("Мои данные 📃️", callback_data=info_filter.new(
-        section='/account'
-    )),
-    types.InlineKeyboardButton("Текущая тренировка ⏳", callback_data=info_filter.new(
-        section='/approaches'
-    )),
-)
