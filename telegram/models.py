@@ -130,18 +130,29 @@ class Exercise:
 @dataclass
 class Approach:
 
+    @staticmethod
+    def convert_time(time: str | None):
+        if time is not None:
+            _, minutes, seconds = [int(t) for t in time.split(":")]
+            return f"{int(seconds // 60)}м {int(seconds % 60)}с"
+        return "-"
+
     def __post_init__(self):
         self.exercise = Exercise(**self.exercise)
         self.message = approach_message.format(
-            time=self.time,
+            time=self.convert_time(self.time),
+            query_place=self.query_place,
             repetition_count=self.repetition_count,
-            rest=self.rest,
+            amount=self.amount,
+            rest=self.convert_time(self.rest),
             exercise=self.exercise.message
         )
 
     id: int
+    query_place: int
     time: timedelta
     repetition_count: int
+    amount: int
     rest: timedelta
     training: int
     exercise: Exercise
@@ -182,11 +193,17 @@ class Training:
 @dataclass
 class TrainingProgram:
 
+    @staticmethod
+    def convert_time(time: str | None):
+        if time is not None:
+            minutes = timedelta(seconds=float(time)).total_seconds() // 60
+            return f"{int(minutes // 60)}ч {int(minutes % 60)}м"
+        return "-"
+
     def __post_init__(self):
         # difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
         difficulty_icon = "💪️"
         group_name = self.group.name if self.group else "Общая подготовка"
-        avg_training_time = self.avg_training_time if self.avg_training_time else "-"
         self.message = program_message.format(
             name=self.name, group_name=group_name,
             image=self.image,
@@ -194,7 +211,7 @@ class TrainingProgram:
             difficulty_icon=difficulty_icon,
             weeks=self.weeks,
             training_count=self.training_count,
-            avg_training_time=avg_training_time,
+            avg_training_time=self.convert_time(self.avg_training_time),
             description=self.description
         )
 

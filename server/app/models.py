@@ -134,7 +134,7 @@ class Subscriber(models.Model):
     )
     height = models.FloatField(
         verbose_name="Рост",
-        validators=[MinValueValidator(1), MaxValueValidator(3)],
+        validators=[MinValueValidator(50), MaxValueValidator(300)],
         blank=True,
         null=True,
     )
@@ -233,7 +233,7 @@ class TrainingProgram(models.Model):
         return f"{self.name}, сложность: {self.difficulty}"
 
     @property
-    def avg_training_time(self) -> timedelta:
+    def avg_training_time(self) -> timedelta | None:
         """
         average training time
         @return: timedelta
@@ -248,9 +248,8 @@ class TrainingProgram(models.Model):
                     output_field=models.DurationField())
             )
         )
-        if output.get("time", None) is not None:
-            return output.get("time") / len(trainings)
-        return 0
+        if time := output.get("time"):
+            return time / len(trainings)
 
     @property
     def training_count(self) -> int:
@@ -264,7 +263,7 @@ class TrainingProgram(models.Model):
         return count
 
     @property
-    def difficulty(self) -> float:
+    def difficulty(self) -> float | None:
         """
         average training difficulty
         @return: float
@@ -272,7 +271,7 @@ class TrainingProgram(models.Model):
         queryset = Training.objects.filter(  # pylint: disable=no-member
             training_program_set=self
         ).aggregate(Avg("difficulty"))
-        return queryset.get("difficulty__avg", 0)
+        return queryset.get("difficulty__avg")
 
     class Meta:  # pylint: disable=too-few-public-methods
         """
@@ -299,7 +298,7 @@ class Training(models.Model):
         return f"{self.name}, сложность: {self.difficulty}"
 
     @property
-    def time(self) -> timedelta:
+    def time(self) -> timedelta | None:
         """
         sum of all approach time and rest
         @return: timedelta
@@ -310,7 +309,7 @@ class Training(models.Model):
             (F("time") + F("rest")) * F("amount"),
             output_field=models.DurationField()))
                     )
-        return output.get("time", 0)
+        return output.get("time")
 
     @property
     def approach_count(self) -> int:

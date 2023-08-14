@@ -3,11 +3,14 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message
 
 from api import ApiClient, create_anonymous_user
-from models import TelegramUser, Token
+from models import TelegramUser, Token, Subscriber
 
 
-async def is_authenticated(client, data):
-    pass
+async def is_authenticated(client, data) -> Subscriber:
+    user: TelegramUser = await client.get_user(*data, cache=True)
+
+    if subscriber := user.subscriber:
+        return subscriber
 
 
 async def is_registered(client, data) -> Tuple[TelegramUser, Token]:
@@ -25,33 +28,30 @@ class RegisterMiddleware(BaseMiddleware):
         event: Message,
         data: Dict[str, Any]
     ) -> Any:
-        state = data.get("state")
-        await state.clear()
         client = ApiClient()
 
         if args := await is_registered(client, event.from_user):
-            data["client"] = client
-            data["args"] = args
+            data.update({"client": client, "args": args})
             await handler(event, data)
         else:
-            return event.answer("Введите /start, чтобы зарегистрироваться")
+            await event.answer("Введите /start, чтобы зарегистрироваться")
 
 
-class SubscribeMiddleware(RegisterMiddleware):
+class SubscribeMiddleware(BaseMiddleware):
     async def __call__(
             self,
             handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
             event: Message,
             data: Dict[str, Any]
     ) -> Any:
-        state = data.get("state")
-        await state.clear()
         client = ApiClient()
 
         if args := await is_registered(client, event.from_user):
-            data["client"] = client
-            data["args"] = args
-            await handler(event, data)
+            if subscriber := await is_authenticated(client, args):
+                data.update({"client": client, "subscriber": subscriber})
+                await handler(event, data)
+            else:
+                return event.answer("Нажмите на кнопку <b>Подписаться 🎁</b>", parse_mode="HTML")
         else:
-            return event.answer("Введите /start, чтобы зарегистрироваться")
+            await event.answer("Введите /start, чтобы зарегистрироваться")
 

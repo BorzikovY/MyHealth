@@ -2,13 +2,14 @@ program_message = "<b>{name} | {group_name}</b>\n\n" \
                   "<a href=\"{image}\">&#8205;</a>" \
                   "<pre>Сложность:                      {difficulty} {difficulty_icon}</pre>\n" \
                   "<pre>Длительность:                   {weeks} недель</pre>\n" \
-                  "<pre>Кол-во тренирововк:             {training_count}</pre>\n" \
+                  "<pre>Кол-во тренировок:              {training_count}</pre>\n" \
                   "<pre>Среднее время одной тренировки: {avg_training_time} ⌚️</pre>\n\n" \
                   "<b>Описание</b> <i>{description}</i>"
 
-approach_message = "{exercise}\n" \
+approach_message = "<b>№_{query_place}</b> {exercise}\n" \
                    "<pre>Время одного подхода: {time}</pre>\n" \
-                   "<pre>Кол-во подходов:      {repetition_count} раз</pre>\n" \
+                   "<pre>Кол-во подходов:      {amount} раз</pre>\n" \
+                   "<pre>Кол-во повторений:    {repetition_count} раз</pre>\n" \
                    "<pre>Время отдыха:         {rest}</pre>"
 
 exercise_message = "<b>{name}</b>\n" \
@@ -23,15 +24,15 @@ user_message: str = "<b>Пользовательские данные</b>\n\n" \
 
 subscriber_message: str = "<b>Личная информация</b>\n\n" \
                           "<pre>Возраст: {age} {age_prefix}</pre>\n" \
-                          "<pre>Рост:    {height} м</pre>\n" \
+                          "<pre>Рост:    {height} см</pre>\n" \
                           "<pre>Вес:     {weight} кг</pre>\n" \
                           "<pre>Гендер:  {gender_icon}</pre>\n" \
                           "<pre>Суточная норма воды: {water_norm} л</pre>\n" \
                           "<pre>Индекс массы тела: {bmi}</pre>\n" \
 
 nutrition_message = "<b>{name}</b>\n\n" \
-                    "<pre>Объем:            {dosages}</pre>\n" \
-                    "<pre>Употребление:     {use}</pre>\n" \
+                    "<pre>Объем: {dosages}</pre>\n\n" \
+                    "<pre>Употребление: {use}</pre>\n\n" \
                     "<pre>Противопоказания: {contraindications}</pre>\n\n" \
                     "<b>Описание</b> <i>{description}</i>"
 
@@ -44,7 +45,7 @@ portion_message = "<b>{name}</b>\n\n" \
 
 training_message = "<b>{name}</b>\n\n" \
                    "<pre>Сложность:         {difficulty}</pre>\n" \
-                   "<pre>Воемя:             {time}</pre>\n" \
+                   "<pre>Время:             {time}</pre>\n" \
                    "<pre>Кол-во упражнений: {approach_count}</pre>\n\n" \
                    "<b>Описание</b> <i>{description}</i>"
 
