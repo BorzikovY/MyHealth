@@ -16,6 +16,7 @@ difficulty_filter = CallbackData("difficulty_filter", "difficulty")
 week_filter = CallbackData("week_filter", "weeks")
 gender_filter = CallbackData("gender", "gender")
 activity_filter = CallbackData("activity", "activity")
+info_filter = CallbackData("section", "section")
 
 
 op_filters = {
@@ -114,7 +115,8 @@ move_buttons = [
 start_keyboard = types.ReplyKeyboardMarkup(3, one_time_keyboard=False).add(
     types.KeyboardButton(text="/subscribe Подписаться 🎁", callback_data="subscribe"),
     types.KeyboardButton(text="/my_health Мое здоровье 🫀️", callback_data="filter_programs"),
-    types.KeyboardButton(text="/account Мои данные 📃️")
+    types.KeyboardButton(text="/account Мои данные 📃️"),
+    types.KeyboardButton(text="/info Вспомогательная информация ✅")
 )
 
 start_keyboard.add(
@@ -211,4 +213,15 @@ activity_keyboard.add(
     types.InlineKeyboardButton("Активные занятия спортом", callback_data=activity_filter.new(
         activity=1.9
     ))
+)
+info_keyboard = types.InlineKeyboardMarkup(3).add(
+    types.InlineKeyboardButton("Мое здоровье 🫀️", callback_data=info_filter.new(
+        section='/my_health'
+    )),
+    types.InlineKeyboardButton("Мои данные 📃️", callback_data=info_filter.new(
+        section='/account'
+    )),
+    types.InlineKeyboardButton("Текущая тренировка ⏳", callback_data=info_filter.new(
+        section='/approaches'
+    )),
 )

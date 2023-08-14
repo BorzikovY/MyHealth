@@ -255,11 +255,10 @@ class Subscriber:
             return f'{bmi} - дефицит массы тела'
         elif bmi >= 18.5 and bmi <= 24.9:
             return f'{bmi} - нормальный вес'
-        if bmi >= 25 and bmi <= 30:
+        elif bmi >= 25 and bmi <= 30:
             return f'{bmi} - избыточный вес'
-        if bmi > 30:
+        elif bmi > 30:
             return f'{bmi} - ожирение'
-        
 
     def __post_init__(self):
         self.message = subscriber_message.format(

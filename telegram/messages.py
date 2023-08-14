@@ -47,3 +47,7 @@ training_message = "<b>{name}</b>\n\n" \
                    "<pre>Воемя:             {time}</pre>\n" \
                    "<pre>Кол-во упражнений: {approach_count}</pre>\n\n" \
                    "<b>Описание</b> <i>{description}</i>"
+
+info_my_health_message: str = '...'
+info_account_message: str = '...'
+info_approaches_message: str = '...'

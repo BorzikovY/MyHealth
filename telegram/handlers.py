@@ -18,7 +18,8 @@ from keyboards import (
     filter_keyboard,
     start_schedule_keyboard,
     create_training_keyboard,
-    activity_keyboard
+    activity_keyboard,
+    info_keyboard
 )
 from notifications import scheduler
 from states import (
@@ -28,6 +29,7 @@ from states import (
     ScheduleState,
     ApproachState,
     CaloriesState,
+    InfoState,
     Cycle,
     Iterable
 )
@@ -55,6 +57,16 @@ async def start(message: types.Message, state: FSMContext):
                    "Если у вас возникли вопросы, обратитесь в <b>тех поддержку</b>"
 
     await message.reply(msg, reply_markup=start_keyboard, parse_mode="HTML")
+
+
+async def info(call: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    await Telegram.send_message(
+        call.from_user.id, 
+        "О каком разделе вы хотите посмотреть информацию?", 
+        reply_markup=info_keyboard
+        )
+    await InfoState.info.set()
 
 
 async def account(message: types.Message):

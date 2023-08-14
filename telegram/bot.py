@@ -2,6 +2,7 @@ from api import ApiClient, Telegram
 
 from handlers import (
     start,
+    info,
     account,
     subscribe,
     programs,
@@ -42,7 +43,9 @@ from states import (
     ApproachState,
     get_next_approach,
     CaloriesState,
-    get_activity
+    get_activity,
+    InfoState,
+    get_info
 )
 from keyboards import (
     move,
@@ -55,7 +58,8 @@ from keyboards import (
     program_filter,
     nutrition_filter,
     notification,
-    activity_filter
+    activity_filter,
+    info_filter
 )
 
 from aiogram import Dispatcher, executor, types
@@ -75,6 +79,7 @@ async def delete_messages(call: types.CallbackQuery, state):
 
 
 dp.register_message_handler(start, commands=["start"], state="*")
+dp.register_message_handler(info, commands=["info"], state="*")
 dp.register_message_handler(programs, commands=["programs"], state="*")
 dp.register_message_handler(subscribe, commands=["subscribe"], state="*")
 dp.register_message_handler(account, commands=["account"], state="*")
@@ -196,6 +201,14 @@ dp.register_callback_query_handler(
     activity_filter.filter(),
     state=CaloriesState.activity
 )
+
+'''Register InfoState'''
+dp.register_callback_query_handler(
+    get_info,
+    info_filter.filter(),
+    state=InfoState.info
+)
+
 
 if __name__ == '__main__':
     scheduler.start()

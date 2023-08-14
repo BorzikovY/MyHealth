@@ -24,6 +24,11 @@ from keyboards import (
     create_move_keyboard,
     create_training_keyboard
 )
+from messages import (
+    info_my_health_message,
+    info_account_message,
+    info_approaches_message
+)
 from notifications import scheduler
 
 
@@ -62,6 +67,10 @@ class ScheduleState(StatesGroup):
     weekdays: State = State()
     location: State = State()
     time: State = State()
+
+
+class InfoState(StatesGroup):
+    info: State = State()
 
 
 class Iterable:
@@ -264,6 +273,7 @@ async def get_gender(call: types.CallbackQuery, callback_data: dict, state: FSMC
         await call.message.edit_text("Что-то пошло не так")
     await state.finish()
 
+
 async def get_activity(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
     activity = float(callback_data.get('activity'))
     data = await state.get_data()
@@ -274,6 +284,18 @@ async def get_activity(call: types.CallbackQuery, callback_data: dict, state: FS
             calories = int(((10 * data['weight']) + (625 * data['height']) - (5 * data['age'] - 161)) * activity)
     await call.message.edit_text(f'Дневная норма калорий: {calories}')
     await state.finish()
+
+
+async def get_info(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
+    section = callback_data.get('section')
+    match section:
+        case '/my_health':
+            info = info_my_health_message
+        case '/account':
+            info = info_account_message
+        case '/approaches':
+            info = info_approaches_message
+    await call.message.edit_text(info)
 
 
 async def send_nutritions(call: types.CallbackQuery, state: FSMContext, direction: int = 1):
