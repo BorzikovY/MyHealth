@@ -170,16 +170,16 @@ class JsonCacheHandler(BaseCacheHandler):
             user = self.from_json(await self.users.get(
                 f"{data.get(_id)}.{self.ext}"
             ))
-
-        return TelegramUser(**user) if user else None
+        if user:
+            return TelegramUser(**user)
 
     async def get_token(self, data: dict, _id: str) -> Token:
         async with self.token_lock:
             token = self.from_json(await self.tokens.get(
                 f"{data.get(_id)}.{self.ext}"
             ))
-
-        return Token(**token) if token else None
+        if token:
+            return Token(**token)
 
     async def update_programs(self, formatted_data: dict, _id: str):
         async with program_lock:
