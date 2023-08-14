@@ -26,7 +26,14 @@ from keyboards import (
     Move,
     Schedule,
     Subscriber,
-    Program
+    Program,
+    Info,
+    Activity
+)
+from messages import (
+    info_my_health_message,
+    info_account_message,
+    info_approaches_message
 )
 from notifications import scheduler
 
@@ -57,10 +64,18 @@ class SubscribeState(StatesGroup):
     gender: State = State()
 
 
+class CaloriesState(StatesGroup):
+    activity: State = State()
+
+
 class ScheduleState(StatesGroup):
     weekdays: State = State()
     location: State = State()
     time: State = State()
+
+
+class InfoState(StatesGroup):
+    info: State = State()
 
 
 class Iterable:
@@ -269,10 +284,35 @@ async def get_gender(call: types.CallbackQuery, callback_data: Subscriber, state
         await call.message.edit_text("Данные были успешно обновлены!")
     else:
         await call.message.edit_text("Что-то пошло не так")
-    await state.clear()
 
 
-async def send_nutritions(call: types.CallbackQuery, state: FSMContext, direction: int = 1) -> bool:
+async def get_activity(call: types.CallbackQuery, callback_data: Activity, state: FSMContext):
+    data = await state.get_data()
+    A = callback_data.value
+    match data['gender']:
+        case 'male':
+            calories = int(((10 * data['weight']) + (6.25 * data['height']) - (5 * data['age'] + 5)) * A)
+        case 'female':
+            calories = int(((10 * data['weight']) + (6.25 * data['height']) - (5 * data['age'] - 161)) * A)
+        case _:
+            calories = None
+    await call.message.edit_text(f'Дневная норма калорий: {calories}')
+
+
+async def get_info(call: types.CallbackQuery, callback_data: Info, state: FSMContext):
+    match callback_data.section:
+        case '/my_health':
+            info = info_my_health_message
+        case '/account':
+            info = info_account_message
+        case '/approaches':
+            info = info_approaches_message
+        case _:
+            info = None
+    await call.answer(info)
+
+
+async def send_nutritions(call: types.CallbackQuery, state: FSMContext, direction: int = 1):
     nutritions = (await state.get_data()).get("nutritions", [])
     try:
         nutrition = nutritions.__next__(direction)

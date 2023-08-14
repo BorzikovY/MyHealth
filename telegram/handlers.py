@@ -8,16 +8,23 @@ from api import (
     register_user,
     update_subscribe,
     get_program,
-    get_nutrition,
     get_approaches,
-    get_trainings, get_nutritions, get_programs
+    get_trainings,
+    get_nutritions,
+    get_programs
 )
 from keyboards import (
     start_keyboard,
     create_my_health_keyboard,
     start_callback_keyboard,
     create_training_keyboard,
-    balance_keyboard, ID, Program, Schedule, Content, create_content_keyboard
+    balance_keyboard,
+    create_content_keyboard,
+    create_info_keyboard,
+    create_activity_keyboard,
+    ID,
+    Schedule,
+    Content,
 )
 from notifications import scheduler
 from states import (
@@ -26,13 +33,15 @@ from states import (
     SubscribeState,
     ScheduleState,
     ApproachState,
+    CaloriesState,
+    InfoState,
     Cycle,
     Iterable
 )
 from models import (
     TelegramUser,
-    Token,
-    TrainingProgram, Subscriber
+    Subscriber,
+    TrainingProgram
 )
 
 
@@ -58,6 +67,16 @@ async def account(message: types.Message, state: FSMContext, client: ApiClient, 
     await state.clear()
     user: TelegramUser = await client.get_user(*args, cache=True)
     await message.reply(user.message, reply_markup=balance_keyboard, parse_mode="HTML")
+
+
+async def info(call: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await Telegram.send_message(
+        call.from_user.id,
+        "О каком разделе вы хотите посмотреть информацию?",
+        reply_markup=create_info_keyboard()
+        )
+    await state.set_state(InfoState.info)
 
 
 async def subscribe(message: types.Message, state: FSMContext, client: ApiClient, args):
@@ -116,6 +135,24 @@ async def update_my_health(call: types.CallbackQuery, state: FSMContext):
         "Введите возраст 👶️-🧓️",
     )
     await state.set_state(SubscribeState.age)
+
+
+async def calculate_calories(call: types.CallbackQuery, state: FSMContext, subscriber: Subscriber):
+    await state.clear()
+    if subscriber.is_kfc_valid:
+        await Telegram.send_message(
+            call.from_user.id,
+            "Какая у Вас дневная активность?", reply_markup=create_activity_keyboard()
+        )
+        await state.update_data({
+                'age': subscriber.age,
+                'weight': subscriber.weight,
+                'height': subscriber.height,
+                'gender': subscriber.gender
+            })
+        await state.set_state(CaloriesState.activity)
+    else:
+        await Telegram.send_message(call.from_user.id, "Заполните данные своего профиля!")
 
 
 async def buy_content(call: types.CallbackQuery, callback_data: Content, state: FSMContext):

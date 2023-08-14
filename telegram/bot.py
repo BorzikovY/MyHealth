@@ -8,12 +8,14 @@ from api import ApiClient, Telegram
 
 from handlers import (
     start,
+    info,
     account,
     subscribe,
     programs,
     nutritions,
     my_health,
     update_my_health,
+    calculate_calories,
     buy_content,
     program,
     schedule,
@@ -44,7 +46,11 @@ from states import (
     get_next_nutrition,
     get_next_portion,
     ApproachState,
-    get_next_approach
+    get_next_approach,
+    CaloriesState,
+    get_activity,
+    InfoState,
+    get_info
 )
 from keyboards import (
     COMMANDS,
@@ -53,7 +59,9 @@ from keyboards import (
     Content,
     Subscriber,
     Program,
-    Schedule
+    Schedule,
+    Activity,
+    Info
 )
 
 from aiogram import Dispatcher, types, Router
@@ -65,6 +73,7 @@ register_router = Router()
 subscribe_router = Router()
 register_router.message.middleware(RegisterMiddleware())
 subscribe_router.message.middleware(SubscribeMiddleware())
+subscribe_router.callback_query.middleware(SubscribeMiddleware())
 
 
 @dp.callback_query(text.Text("quit"))
@@ -82,10 +91,12 @@ dp.include_router(register_router)
 
 subscribe_router.message.register(my_health, text.Text(COMMANDS["my_health"]))
 subscribe_router.message.register(approaches, text.Text(COMMANDS["approaches"]))
+subscribe_router.callback_query.register(calculate_calories, text.Text("calculate_calories"))
 dp.include_router(subscribe_router)
 
 
 dp.message.register(start, command.Command("start"))
+dp.message.register(info, text.Text(COMMANDS["info"]))
 dp.message.register(programs, text.Text(COMMANDS["programs"]))
 dp.message.register(nutritions, text.Text(COMMANDS["nutritions"]))
 dp.callback_query.register(update_my_health, text.Text("update_subscribe"))
@@ -188,6 +199,20 @@ dp.callback_query.register(
     get_gender,
     Subscriber.filter(),
     SubscribeState.gender
+)
+
+'''Register CaloriesState'''
+dp.callback_query.register(
+    get_activity,
+    Activity.filter(),
+    CaloriesState.activity
+)
+
+'''Register InfoState'''
+dp.callback_query.register(
+    get_info,
+    Info.filter(),
+    InfoState.info
 )
 
 
