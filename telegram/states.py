@@ -142,23 +142,25 @@ async def set_notification(message: types.Message, state: FSMContext):
 
 async def get_weekdays(call: types.CallbackQuery, callback_data: Schedule, state: FSMContext):
     data = await state.get_data()
-    weekdays = data.get("weekdays", set())
+    weekdays, texts = data.get("weekdays", set()), data.get("texts", set())
 
     if callback_data.filtered:
-        await call.message.edit_text("Выберите день недели")
+        if callback_data.weekday is not None:
+            weekdays.update({callback_data.weekday})
+            texts.update({callback_data.text})
+        message = "Выберите день недели.\n"
+        if texts:
+            message += f"Вы уже выбрали {', '.join(map(lambda t: f'<b>{t}</b>', texts))}"
+        await call.message.edit_text(message, parse_mode="HTML")
         await call.message.edit_reply_markup(
             reply_markup=create_schedule_keyboard()
         )
-        if callback_data.weekday:
-            weekdays.update({callback_data.weekday})
-        await state.update_data({"weekdays": weekdays})
+        await state.update_data({"weekdays": weekdays, "texts": texts})
         await state.set_state(ScheduleState.weekdays)
     else:
-        await call.message.delete()
         if not weekdays:
             await state.update_data({"weekdays": {0, 1, 2, 3, 4}})
-        await Telegram.send_message(
-            call.from_user.id,
+        await call.message.edit_text(
             "Введите город, в котором живете (необходимо для настройки времени)"
         )
         await state.set_state(ScheduleState.location)
@@ -167,18 +169,26 @@ async def get_weekdays(call: types.CallbackQuery, callback_data: Schedule, state
 async def get_location(message: types.Message, state: FSMContext):
     geolocator = Nominatim(user_agent="geoapiExercises")
     location = geolocator.geocode(message.text)
+    if location is not None:
+        timezone = TimezoneFinder().timezone_at(
+            lng=location.longitude, lat=location.latitude
+        )
 
-    timezone = TimezoneFinder().timezone_at(
-        lng=location.longitude, lat=location.latitude
-    )
-
-    await state.update_data({"timezone": timezone})
-    await Telegram.delete_message(
-        message.from_user.id, message.message_id - 1
-    )
-    await message.delete()
-    await Telegram.send_message(message.from_user.id, "Введите время в формате HH:MM")
-    await state.set_state(ScheduleState.time)
+        await state.update_data({"timezone": timezone})
+        await message.reply(str(location))
+        await Telegram.send_message(
+            message.from_user.id,
+            "Введите время в формате HH:MM. В это время будут приходить уведомления"
+        )
+        await state.set_state(ScheduleState.time)
+    else:
+        msg = "Извините, такой город не найден(\n" \
+              "Попробуйте проверить название города или введите другой"
+        await message.answer(msg)
+        await Telegram.delete_message(
+            message.from_user.id, message.message_id - 1
+        )
+        await message.delete()
 
 
 async def get_time(message: types.Message, state: FSMContext):
@@ -198,10 +208,10 @@ async def get_time(message: types.Message, state: FSMContext):
     except (ValueError, AssertionError) as error:
         await Telegram.send_message(message.from_user.id, "Введите время от 00:00 до 23:59")
         await state.set_state(ScheduleState.time)
-    await Telegram.delete_message(
-        message.from_user.id, message.message_id - 1
-    )
-    await message.delete()
+        await Telegram.delete_message(
+            message.from_user.id, message.message_id - 1
+        )
+        await message.delete()
 
 
 async def get_age(message: types.Message, state: FSMContext):
@@ -209,29 +219,29 @@ async def get_age(message: types.Message, state: FSMContext):
         value = int(message.text)
         assert 0 <= value <= 100
         await state.update_data(age=value)
-        await Telegram.send_message(message.from_user.id, "Введите рост 📏️ (в метрах)")
+        await Telegram.send_message(message.from_user.id, "Введите рост 📏️ (в сантиметрах)")
         await state.set_state(SubscribeState.height)
     except (ValueError, AssertionError) as error:
         await Telegram.send_message(message.from_user.id, "Введите целое число от 0 до 100")
-    await Telegram.delete_message(
-        message.from_user.id, message.message_id - 1
-    )
-    await message.delete()
+        await Telegram.delete_message(
+            message.from_user.id, message.message_id - 1
+        )
+        await message.delete()
 
 
 async def get_height(message: types.Message, state: FSMContext):
     try:
         value = float(message.text)
-        assert 1. <= value <= 3.
+        assert 50. <= value <= 300.
         await state.update_data(height=value)
-        await Telegram.send_message(message.from_user.id, "Введите вес ⚖️ (в кг)")
+        await Telegram.send_message(message.from_user.id, "Введите вес ⚖️ (в килограммах)")
         await state.set_state(SubscribeState.weight)
     except (ValueError, AssertionError) as error:
-        await Telegram.send_message(message.from_user.id, "Введите десятичное число от 1 до 3")
-    await Telegram.delete_message(
-        message.from_user.id, message.message_id - 1
-    )
-    await message.delete()
+        await Telegram.send_message(message.from_user.id, "Введите число от 50 до 300")
+        await Telegram.delete_message(
+            message.from_user.id, message.message_id - 1
+        )
+        await message.delete()
 
 
 async def get_weight(message: types.Message, state: FSMContext):
@@ -245,11 +255,11 @@ async def get_weight(message: types.Message, state: FSMContext):
         )
         await state.set_state(SubscribeState.gender)
     except (ValueError, AssertionError) as error:
-        await Telegram.send_message(message.from_user.id, "Введите десятичное число от 20 до 220")
-    await Telegram.delete_message(
-        message.from_user.id, message.message_id - 1
-    )
-    await message.delete()
+        await Telegram.send_message(message.from_user.id, "Введите число от 20 до 220")
+        await Telegram.delete_message(
+            message.from_user.id, message.message_id - 1
+        )
+        await message.delete()
 
 
 async def get_gender(call: types.CallbackQuery, callback_data: Subscriber, state: FSMContext):
@@ -371,10 +381,10 @@ async def get_difficulty_value(message: types.Message, state: FSMContext):
         await state.set_state(ProgramState.difficulty_op)
     except (AssertionError, ValueError) as valid_error:
         await message.answer("Введите десятичное число от 1 до 5")
-    await Telegram.delete_message(
-        message.from_user.id, message.message_id - 1
-    )
-    await message.delete()
+        await Telegram.delete_message(
+            message.from_user.id, message.message_id - 1
+        )
+        await message.delete()
 
 
 async def get_difficulty_op(call: types.CallbackQuery, callback_data: Program, state: FSMContext):
@@ -397,10 +407,10 @@ async def get_weeks_value(message: types.Message, state: FSMContext):
         await state.set_state(ProgramState.weeks_op)
     except (AssertionError, ValueError) as valid_error:
         await message.answer("Введите число больше 0")
-    await Telegram.delete_message(
-        message.from_user.id, message.message_id - 1
-    )
-    await message.delete()
+        await Telegram.delete_message(
+            message.from_user.id, message.message_id - 1
+        )
+        await message.delete()
 
 
 async def get_weeks_op(call: types.CallbackQuery, callback_data: Program, state: FSMContext):

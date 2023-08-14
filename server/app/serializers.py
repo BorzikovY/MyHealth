@@ -263,8 +263,10 @@ class ApproachSerializer(ModelSerializer, InstanceCreationMixin, InitSerializerM
         model = Approach
         fields = (
             "id",
+            "query_place",
             "time",
             "repetition_count",
+            "amount",
             "rest",
             "training",
             "exercise"

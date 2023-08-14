@@ -27,6 +27,7 @@ class Content(CallbackData, prefix="content"):
 
 class Schedule(CallbackData, prefix="schedule"):
     filtered: bool = True
+    text: Optional[str] = None
     weekday: Optional[int] = None
 
 
@@ -101,16 +102,18 @@ def create_content_keyboard(content: TrainingProgram | Nutrition, **kwargs):
     return keyboard_builder.as_markup()
 
 
-def create_my_health_keyboard(**kwargs):
+def create_my_health_keyboard(enable=True, **kwargs):
     keyboard_builder = InlineKeyboardBuilder()
     keyboard_builder.button(
         text="Посмотреть программу", callback_data=ID(**kwargs)
     )
-    keyboard_builder.button(text="Отключить уведомление", callback_data="disable_schedule")
-    keyboard_builder.button(text="Обновить данные", callback_data="update_subscribe")
-    keyboard_builder.button(text="Запустить уведомление", callback_data=ID(**kwargs))
+    keyboard_builder.button(text="Заполнить данные", callback_data="update_subscribe")
+    if enable:
+        keyboard_builder.button(text="Запустить уведомление", callback_data="set_schedule")
+    else:
+        keyboard_builder.button(text="Отключить уведомление", callback_data="disable_schedule")
 
-    keyboard_builder.adjust(2, 2)
+    keyboard_builder.adjust(2, 1)
     return keyboard_builder.as_markup()
 
 
@@ -135,14 +138,14 @@ def create_gender_keyboard():
 
 def create_schedule_keyboard():
     keyboard_builder = InlineKeyboardBuilder()
-    keyboard_builder.button(text="пн", callback_data=Schedule(weekday=0))
-    keyboard_builder.button(text="вт", callback_data=Schedule(weekday=1))
-    keyboard_builder.button(text="ср", callback_data=Schedule(weekday=2))
-    keyboard_builder.button(text="чт", callback_data=Schedule(weekday=3))
-    keyboard_builder.button(text="пт", callback_data=Schedule(weekday=4))
-    keyboard_builder.button(text="сб", callback_data=Schedule(weekday=5))
-    keyboard_builder.button(text="вс", callback_data=Schedule(weekday=6))
-    keyboard_builder.button(text="хватит", callback_data=Schedule(filtered=False))
+    keyboard_builder.button(text="пн", callback_data=Schedule(weekday=0, text="пн"))
+    keyboard_builder.button(text="вт", callback_data=Schedule(weekday=1, text="вт"))
+    keyboard_builder.button(text="ср", callback_data=Schedule(weekday=2, text="ср"))
+    keyboard_builder.button(text="чт", callback_data=Schedule(weekday=3, text="чт"))
+    keyboard_builder.button(text="пт", callback_data=Schedule(weekday=4, text="пт"))
+    keyboard_builder.button(text="сб", callback_data=Schedule(weekday=5, text="сб"))
+    keyboard_builder.button(text="вс", callback_data=Schedule(weekday=6, text="вс"))
+    keyboard_builder.button(text="Готово!", callback_data=Schedule(filtered=False))
 
     keyboard_builder.adjust(3, 3, 2)
     return keyboard_builder.as_markup()

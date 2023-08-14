@@ -20,7 +20,7 @@ from handlers import (
     approaches,
     disable_schedule
 )
-from middlewares import RegisterMiddleware
+from middlewares import RegisterMiddleware, SubscribeMiddleware
 from notifications import scheduler
 from states import (
     ProgramState,
@@ -62,7 +62,9 @@ storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
 register_router = Router()
+subscribe_router = Router()
 register_router.message.middleware(RegisterMiddleware())
+subscribe_router.message.middleware(SubscribeMiddleware())
 
 
 @dp.callback_query(text.Text("quit"))
@@ -78,14 +80,17 @@ register_router.message.register(account, text.Text(COMMANDS["account"]))
 dp.include_router(register_router)
 
 
+subscribe_router.message.register(my_health, text.Text(COMMANDS["my_health"]))
+subscribe_router.message.register(approaches, text.Text(COMMANDS["approaches"]))
+dp.include_router(subscribe_router)
+
+
 dp.message.register(start, command.Command("start"))
 dp.message.register(programs, text.Text(COMMANDS["programs"]))
 dp.message.register(nutritions, text.Text(COMMANDS["nutritions"]))
-dp.message.register(my_health, text.Text(COMMANDS["my_health"]))
-dp.message.register(approaches, text.Text(COMMANDS["approaches"]))
 dp.callback_query.register(update_my_health, text.Text("update_subscribe"))
 dp.callback_query.register(disable_schedule, text.Text("disable_schedule"))
-dp.callback_query.register(schedule, ID.filter())
+dp.callback_query.register(schedule, text.Text("set_schedule"))
 dp.callback_query.register(buy_content, Content.filter())
 dp.callback_query.register(program, ID.filter())
 
