@@ -1,200 +1,181 @@
-from aiogram import types
+from typing import Optional, List
 
-from aiogram.utils.callback_data import CallbackData
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    InlineKeyboardButton,
+    KeyboardButton
+)
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.filters.callback_data import CallbackData
 
 from models import TrainingProgram, Nutrition
 
 
-move = CallbackData("move", "direction")
-program_filter = CallbackData("program", "id")
-nutrition_filter = CallbackData("nutrition", "id")
-buy = CallbackData("buy", "training_program", "sport_nutrition")
-_filter = CallbackData("filter", "filter")
-notification = CallbackData("notification", "program_id")
-schedule_filter = CallbackData("schedule_filter", "filter", "weekday")
-difficulty_filter = CallbackData("difficulty_filter", "difficulty")
-week_filter = CallbackData("week_filter", "weeks")
-gender_filter = CallbackData("gender", "gender")
-activity_filter = CallbackData("activity", "activity")
-info_filter = CallbackData("section", "section")
+class Move(CallbackData, prefix="move"):
+    direction: int = 1
 
 
-op_filters = {
-    "difficulty": difficulty_filter,
-    "weeks": week_filter
-}
+class ID(CallbackData, prefix="id"):
+    id: Optional[int] = None
+
+
+class Content(CallbackData, prefix="content"):
+    training_program: Optional[int] = None
+    sport_nutrition: Optional[int] = None
+
+
+class Schedule(CallbackData, prefix="schedule"):
+    filtered: bool = True
+    weekday: Optional[int] = None
+
+
+class Program(CallbackData, prefix="content"):
+    filtered: bool = True
+    difficulty: Optional[str] = None
+    weeks: Optional[str] = None
+
+
+class Subscriber(CallbackData, prefix="subscriber"):
+    gender: str = "helicopter"
+
+
+def move_buttons() -> List[InlineKeyboardButton]:
+    return [
+        {"text": "◀️", "callback_data": Move(direction=-1)},
+        {"text": "Закрыть", "callback_data": 'quit'},
+        {"text": "▶️", "callback_data": Move(direction=1)}
+    ]
 
 
 def create_op_keyboard(param: str, value):
-    if param in op_filters:
-        return types.InlineKeyboardMarkup(3).add(
-            types.InlineKeyboardButton("🔼️", callback_data=op_filters[param].new(
-                **{param: ">"}
-            )),
-            types.InlineKeyboardButton(f"{value}", callback_data=op_filters[param].new(
-                **{param: "="}
-            )),
-            types.InlineKeyboardButton("🔽️", callback_data=op_filters[param].new(
-                **{param: "<"}
-            ))
-        )
+    keyboard_builder = InlineKeyboardBuilder()
+    if param in ["difficulty", "weeks"]:
+        keyboard_builder.button(text="🔼️", callback_data=Program(**{param: ">"}))
+        keyboard_builder.button(text=f"{value}", callback_data=Program(**{param: "="}))
+        keyboard_builder.button(text="🔽️", callback_data=Program(**{param: "<"}))
+    keyboard_builder.adjust(3)
+    return keyboard_builder.as_markup()
 
 
 def create_training_keyboard():
-    keyboard = types.InlineKeyboardMarkup().add(
-        types.InlineKeyboardButton("Следующая тренировка", callback_data=move.new(
-            direction=0
-        ))
-    )
-    return keyboard.add(
-        *move_buttons
-    )
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.button(text="Следующая тренировка", callback_data=Move(direction=0))
+    for button in move_buttons():
+        keyboard_builder.button(**button)
+    keyboard_builder.adjust(1, 3)
+    return keyboard_builder.as_markup()
 
 
 def create_move_keyboard():
-    keyboard = types.InlineKeyboardMarkup().add(
-        types.InlineKeyboardButton("Назад", callback_data=move.new(
-            direction=0
-        ))
-    )
-    return keyboard.add(
-        *move_buttons
-    )
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.button(text="Назад", callback_data=Move(direction=0))
+    for button in move_buttons():
+        keyboard_builder.button(**button)
+    keyboard_builder.adjust(1, 3)
+    return keyboard_builder.as_markup()
 
 
 def create_content_keyboard(content: TrainingProgram | Nutrition, **kwargs):
-    look_up = types.InlineKeyboardButton(
+    keyboard_builder = InlineKeyboardBuilder()
+
+    first_line = 1
+    keyboard_builder.button(
         text="Подробнее...",
-        callback_data=move.new(
+        callback_data=Move(
             direction=0
         )
     )
-    buy_it = types.InlineKeyboardButton(
-        f"{content.price} руб 💰️" if content.price > 0. else "Получить бесплатно ✅️",
-        callback_data=buy.new(
-            sport_nutrition=kwargs.get("sport_nutrition", "none"),
-            training_program=kwargs.get("training_program", "none")
-        )
-    )
     if kwargs.get("sport_nutrition") or kwargs.get("training_program"):
-        keyboard = types.InlineKeyboardMarkup().add(buy_it, look_up)
-    else:
-        keyboard = types.InlineKeyboardMarkup().add(look_up)
-    keyboard.add(
-        *move_buttons
-    )
-    return keyboard
+        first_line += 1
+        keyboard_builder.button(
+            text=f"{content.price} руб 💰️" if content.price > 0. else "Получить бесплатно ✅️",
+            callback_data=Content(
+                sport_nutrition=kwargs.get("sport_nutrition"),
+                training_program=kwargs.get("training_program")
+            )
+        )
+    for button in move_buttons():
+        keyboard_builder.button(**button)
+    keyboard_builder.adjust(first_line, 3)
+    return keyboard_builder.as_markup()
 
 
 def create_my_health_keyboard(**kwargs):
-    keyboard = types.InlineKeyboardMarkup(5).add(
-        types.InlineKeyboardButton("Посмотреть программу", callback_data=program_filter.new(
-            id=kwargs.get("training_program")
-        )),
-        types.InlineKeyboardButton("Отключить уведомление", callback_data="quit_notification")
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.button(
+        text="Посмотреть программу", callback_data=ID(**kwargs)
     )
-    keyboard.add(
-        types.InlineKeyboardButton("Обновить данные", callback_data="update_subscribe"),
-        types.InlineKeyboardButton("Запустить уведомление", callback_data=notification.new(
-            program_id=kwargs.get("training_program")
-        ))
-    )
-    keyboard.add(
-        types.InlineKeyboardButton("Калькулятор калорий и БЖУ", callback_data="calculate_calories")
-    )
-    return keyboard
+    keyboard_builder.button(text="Отключить уведомление", callback_data="disable_schedule")
+    keyboard_builder.button(text="Обновить данные", callback_data="update_subscribe")
+    keyboard_builder.button(text="Запустить уведомление", callback_data=ID(**kwargs))
+    keyboard_builder.button(text="Калькулятор калорий и БЖУ", callback_data="calculate_calories"))
+
+    keyboard_builder.adjust(2, 2)
+    return keyboard_builder.as_markup()
 
 
-move_buttons = [
-    types.InlineKeyboardButton("◀️", callback_data=move.new(direction=-1)),
-    types.InlineKeyboardButton("Закрыть", callback_data='quit_content'),
-    types.InlineKeyboardButton("▶️", callback_data=move.new(direction=1))
-]
+def start_callback_keyboard(filter_class: [Program | Schedule], texts: List[str]):
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.button(text=texts[0], callback_data=filter_class(filtered=True))
+    keyboard_builder.button(text=texts[1], callback_data=filter_class(filtered=False))
+
+    keyboard_builder.adjust(2)
+    return keyboard_builder.as_markup()
 
 
-start_keyboard = types.ReplyKeyboardMarkup(3, one_time_keyboard=False).add(
-    types.KeyboardButton(text="/subscribe Подписаться 🎁", callback_data="subscribe"),
-    types.KeyboardButton(text="/my_health Мое здоровье 🫀️", callback_data="filter_programs"),
-    types.KeyboardButton(text="/account Мои данные 📃️"),
-    types.KeyboardButton(text="/info Вспомогательная информация ✅")
-)
+def create_gender_keyboard():
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.button(text="мужской", callback_data=Subscriber(gender="male"))
+    keyboard_builder.button(text="женский", callback_data=Subscriber(gender="female"))
+    keyboard_builder.button(text="другой", callback_data=Subscriber(gender="helicopter"))
 
-start_keyboard.add(
-    types.KeyboardButton(text="/programs Программы тренировок 🎽"),
-    types.KeyboardButton(text="/nutritions Спортивное питание 🥑"),
-    types.KeyboardButton(text="/approaches Текущая тренировка ⏳")
-)
+    keyboard_builder.adjust(3)
+    return keyboard_builder.as_markup()
 
-filter_keyboard = types.InlineKeyboardMarkup(2).add(
-    types.InlineKeyboardButton("Да", callback_data=_filter.new(
-        filter=1
-    )),
-    types.InlineKeyboardButton("Нет", callback_data=_filter.new(
-        filter=0
-    )),
-)
 
-gender_keyboard = types.InlineKeyboardMarkup(3).add(
-    types.InlineKeyboardButton("мужской", callback_data=gender_filter.new(
-        gender="male"
-    )),
-    types.InlineKeyboardButton("женский", callback_data=gender_filter.new(
-        gender="female"
-    )),
-    types.InlineKeyboardButton("другой", callback_data=gender_filter.new(
-        gender="helicopter"
-    )),
-)
+def create_schedule_keyboard():
+    keyboard_builder = InlineKeyboardBuilder()
+    keyboard_builder.button(text="пн", callback_data=Schedule(weekday=0))
+    keyboard_builder.button(text="вт", callback_data=Schedule(weekday=1))
+    keyboard_builder.button(text="ср", callback_data=Schedule(weekday=2))
+    keyboard_builder.button(text="чт", callback_data=Schedule(weekday=3))
+    keyboard_builder.button(text="пт", callback_data=Schedule(weekday=4))
+    keyboard_builder.button(text="сб", callback_data=Schedule(weekday=5))
+    keyboard_builder.button(text="вс", callback_data=Schedule(weekday=6))
+    keyboard_builder.button(text="хватит", callback_data=Schedule(filtered=False))
 
-start_schedule_keyboard = types.InlineKeyboardMarkup(2).add(
-    types.InlineKeyboardButton("Я сам все сделаю", callback_data=schedule_filter.new(
-        filter=1,
-        weekday="None"
-    )),
-    types.InlineKeyboardButton("Умолчание мне подходит", callback_data=schedule_filter.new(
-        filter=0,
-        weekday="None"
-    )),
-)
+    keyboard_builder.adjust(3, 3, 2)
+    return keyboard_builder.as_markup()
 
-schedule_keyboard = types.InlineKeyboardMarkup(8).add(
-    types.InlineKeyboardButton("пн", callback_data=schedule_filter.new(
-        filter=1,
-        weekday=0
-    )),
-    types.InlineKeyboardButton("вт", callback_data=schedule_filter.new(
-        filter=1,
-        weekday=1
-    )),
-    types.InlineKeyboardButton("ср", callback_data=schedule_filter.new(
-        filter=1,
-        weekday=2
-    ))
-)
-schedule_keyboard.add(
-    types.InlineKeyboardButton("чт", callback_data=schedule_filter.new(
-        filter=1,
-        weekday=3
-    )),
-    types.InlineKeyboardButton("пт", callback_data=schedule_filter.new(
-        filter=1,
-        weekday=4
-    )),
-    types.InlineKeyboardButton("сб", callback_data=schedule_filter.new(
-        filter=1,
-        weekday=5
-    ))
-)
-schedule_keyboard.add(
-    types.InlineKeyboardButton("вс", callback_data=schedule_filter.new(
-        filter=1,
-        weekday=6
-    )),
-    types.InlineKeyboardButton("хватит", callback_data=schedule_filter.new(
-        filter=0,
-        weekday="None"
-    ))
-)
+
+COMMANDS = {
+    "subscribe": "Подписаться 🎁",
+    "my_health": "Мое здоровье 🫀️",
+    "account": "Мои данные 📃️",
+    "programs": "Программы тренировок 🎽",
+    "nutritions": "Спортивное питание 🥑",
+    "approaches": "Текущая тренировка ⏳"
+}
+
+
+start_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, keyboard=[
+    [
+        KeyboardButton(text=COMMANDS["subscribe"]),
+        KeyboardButton(text=COMMANDS["my_health"]),
+        KeyboardButton(text=COMMANDS["account"])
+    ],
+    [
+        KeyboardButton(text=COMMANDS["programs"]),
+        KeyboardButton(text=COMMANDS["nutritions"]),
+        KeyboardButton(text=COMMANDS["approaches"])
+    ]
+])
+
+balance_keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+    InlineKeyboardButton(text="Паполнить баланс 🤑", callback_data="payment")
+]])
+
 activity_keyboard = types.InlineKeyboardMarkup(5).add(
     types.InlineKeyboardButton("Сидячий образ жизни", callback_data=activity_filter.new(
         activity=1.2

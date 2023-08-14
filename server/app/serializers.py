@@ -402,7 +402,7 @@ class UserUpdateSerializer(UserSerializer):  # pylint: disable=too-many-ancestor
                     raise SerializerError(error.message) from error
 
     def update(self, instance, validated_data):
-        self.update_simple(instance, ["first_name", "last_name"], validated_data)
+        self.update_simple(instance, ["first_name", "last_name", "balance"], validated_data)
         if (subscriber_data := validated_data.get("subscriber")) and hasattr(instance, "subscriber"):
             self.update_simple(
                 instance.subscriber,
@@ -426,7 +426,7 @@ class UserUpdateSerializer(UserSerializer):  # pylint: disable=too-many-ancestor
             "balance",
             "subscriber"
         )
-        read_only_fields = ("telegram_id", "balance")
+        read_only_fields = ("telegram_id",)
 
 
 class UserLoginSerializer(Serializer):  # pylint: disable=abstract-method
