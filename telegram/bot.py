@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import text, command
 
-from api import ApiClient, Telegram
+from api import ApiClient, Telegram, create_anonymous_user
 
 from handlers import (
     start,
@@ -20,9 +20,12 @@ from handlers import (
     program,
     schedule,
     approaches,
-    disable_schedule
+    disable_schedule,
+    accrue_balance,
+    unsubscribe
 )
 from middlewares import RegisterMiddleware, SubscribeMiddleware
+from models import TelegramUser, Token
 from notifications import scheduler
 from states import (
     ProgramState,
@@ -50,7 +53,9 @@ from states import (
     CaloriesState,
     get_activity,
     InfoState,
-    get_info
+    get_info,
+    PaymentState,
+    get_balance
 )
 from keyboards import (
     COMMANDS,
@@ -64,7 +69,7 @@ from keyboards import (
     Info
 )
 
-from aiogram import Dispatcher, types, Router
+from aiogram import Dispatcher, types, Router, F
 
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
@@ -73,6 +78,8 @@ register_router = Router()
 subscribe_router = Router()
 register_router.message.middleware(RegisterMiddleware())
 subscribe_router.message.middleware(SubscribeMiddleware())
+
+register_router.callback_query.middleware(RegisterMiddleware())
 subscribe_router.callback_query.middleware(SubscribeMiddleware())
 
 
@@ -84,8 +91,40 @@ async def delete_messages(call: types.CallbackQuery, state: FSMContext):
     await state.clear()
 
 
+@dp.pre_checkout_query(lambda query: True)
+async def process_pre_checkout_query(pre_checkout_query: types.PreCheckoutQuery):
+    client = ApiClient()
+    instance: TelegramUser = create_anonymous_user(pre_checkout_query.from_user)
+
+    token: Token = await client.get_token(instance)
+    if isinstance(token, Token):
+        user = await client.update_user(
+            instance, token,
+            cache=True, data={"balance": pre_checkout_query.total_amount / 100}
+        )
+        if isinstance(user, TelegramUser):
+            await Telegram.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+        else:
+            await Telegram.answer_pre_checkout_query(
+                pre_checkout_query.id, error_message="Ошибка на сервере. Обратитесь в тех. поддержку", ok=False
+            )
+
+
+@dp.message(F.successful_payment)
+async def process_successful_payment(message: types.Message):
+    await Telegram.send_message(
+        message.chat.id,
+        "Вы успешно пополнили баланс на {total_amount} {currency}".format(
+            total_amount=message.successful_payment.total_amount // 100,
+            currency=message.successful_payment.currency
+        )
+    )
+
+
 register_router.message.register(subscribe, text.Text(COMMANDS["subscribe"]))
+register_router.message.register(unsubscribe, text.Text(COMMANDS["unsubscribe"]))
 register_router.message.register(account, text.Text(COMMANDS["account"]))
+register_router.callback_query.register(accrue_balance, text.Text("accrue_balance"))
 dp.include_router(register_router)
 
 
@@ -213,6 +252,13 @@ dp.callback_query.register(
     get_info,
     Info.filter(),
     InfoState.info
+)
+
+"""Register Payment states"""
+
+dp.message.register(
+    get_balance,
+    PaymentState.balance
 )
 
 

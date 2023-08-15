@@ -111,7 +111,7 @@ class RestApi(type):
     ):  # pylint: disable=bad-mcs-method-argument, unused-argument
         serializer = self.get_serializer(**kwargs)
         serializer.delete()  # pylint: disable=no-member
-        return Response(status=HTTP_204_NO_CONTENT)
+        return Response(serializer.data, status=HTTP_200_OK)
 
 
 """

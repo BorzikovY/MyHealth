@@ -29,7 +29,6 @@ class RegisterMiddleware(BaseMiddleware):
         data: Dict[str, Any]
     ) -> Any:
         client = ApiClient()
-
         if args := await is_registered(client, event.from_user):
             data.update({"client": client, "args": args})
             await handler(event, data)

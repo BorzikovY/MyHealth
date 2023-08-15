@@ -186,6 +186,7 @@ def create_info_keyboard():
 
 COMMANDS = {
     "subscribe": "Подписаться 🎁",
+    "unsubscribe": "Отписаться 🚫",
     "my_health": "Мое здоровье 🫀️",
     "account": "Мои данные 📃️",
     "info": "Информация о разделах ❓️",
@@ -212,5 +213,5 @@ start_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, keyboard=[
 ])
 
 balance_keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-    InlineKeyboardButton(text="Пополнить баланс 🤑", callback_data="payment")
+    InlineKeyboardButton(text="Пополнить баланс 🤑", callback_data="accrue_balance")
 ]])

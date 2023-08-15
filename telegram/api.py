@@ -90,7 +90,9 @@ def format_data(func: Callable):
 
 
 def set_formatter(cls):
-    attrs = [name for name in dir(cls) if name.startswith("update")]
+    attrs = [name for name in dir(cls) if any(
+        [name.startswith(prefix) for prefix in ["update", "delete"]]
+    )]
     for attr in attrs:
         update = format_data(getattr(cls, attr))
         setattr(cls, attr, update)
@@ -227,6 +229,18 @@ class JsonCacheHandler(BaseCacheHandler):
                 self.to_json(existing_data),
                 f"{formatted_data.get(_id)}.{self.ext}"
             )
+
+    async def delete_subscriber(self, formatted_data: dict, _id: str):
+        existing_data = self.from_json(await self.users.get(
+            f"{formatted_data.get(_id)}.{self.ext}"
+        ))
+        if existing_data.get("subscriber"):
+            existing_data.pop("subscriber")
+            async with self.user_lock:
+                await self.users.post(
+                    self.to_json(existing_data),
+                    f"{formatted_data.get(_id)}.{self.ext}"
+                )
 
     async def update_user(self, formatted_data: dict, _id: str) -> None:
         existing_data = self.from_json(await self.users.get(
@@ -699,6 +713,21 @@ class ApiClient:
             Subscriber,
             "telegram_id",
             self.handler.update_subscriber,
+            data=json.dumps(token.post_data())
+        )
+
+    @check_token
+    async def delete_subscriber(self, user: TelegramUser, token: Token, **kwargs) -> Subscriber:
+        url = f"{self.base_url}/api/subscribe/"
+        headers = self.get_headers(token.access_data())
+        return await self.send_request(
+            url,
+            headers,
+            "delete",
+            200,
+            Subscriber,
+            "telegram_id",
+            self.handler.delete_subscriber,
             data=json.dumps(token.post_data())
         )
 

@@ -134,8 +134,16 @@ class Approach:
     def convert_time(time: str | None):
         if time is not None:
             _, minutes, seconds = [int(t) for t in time.split(":")]
-            return f"{int(seconds // 60)}м {int(seconds % 60)}с"
+            return f"{minutes}м {seconds}с"
         return "-"
+
+    @staticmethod
+    def number_prefix(number: int):
+        if number:
+            end = int(str(number)[-1])
+            if end in range(2, 5) and number not in range(12, 15):
+                return "раза"
+        return "раз"
 
     def __post_init__(self):
         self.exercise = Exercise(**self.exercise)
@@ -143,7 +151,9 @@ class Approach:
             time=self.convert_time(self.time),
             query_place=self.query_place,
             repetition_count=self.repetition_count,
+            repetition_count_prefix=self.number_prefix(self.repetition_count),
             amount=self.amount,
+            amount_prefix=self.number_prefix(self.amount),
             rest=self.convert_time(self.rest),
             exercise=self.exercise.message
         )
@@ -272,20 +282,24 @@ class Subscriber:
     @property
     def water_norm(self) -> float:
         '''Возвращает суточную норму воды'''
-        return (self.weight*30)/1000
+        if self.weight:
+            return (self.weight*30)/1000
+        return "?"
     
     @property
     def bmi(self) -> str:
         '''Возвращает индекс массы тела и его расшифровку'''
-        bmi = round(self.weight/(0.0001*self.height**2), 1)
-        if bmi < 18.5:
-            return f'{bmi} - дефицит массы тела'
-        elif 18.5 <= bmi <= 24.9:
-            return f'{bmi} - нормальный вес'
-        elif 25 <= bmi <= 30:
-            return f'{bmi} - избыточный вес'
-        elif bmi > 30:
-            return f'{bmi} - ожирение'
+        if self.weight and self.height:
+            bmi = round(self.weight/(0.0001*self.height**2), 1)
+            if bmi < 18.5:
+                return f'{bmi} - дефицит массы тела'
+            elif 18.5 <= bmi <= 24.9:
+                return f'{bmi} - нормальный вес'
+            elif 25 <= bmi <= 30:
+                return f'{bmi} - избыточный вес'
+            elif bmi > 30:
+                return f'{bmi} - ожирение'
+        return "?"
 
     def __post_init__(self):
         self.message = subscriber_message.format(
@@ -299,9 +313,9 @@ class Subscriber:
         )
 
     telegram_id: int
-    age: int
-    height: float
-    weight: float
+    age: int = None
+    height: float = None
+    weight: float = None
     training_program: int = None
     sport_nutrition: int = None
     gender: str = 'helicopter'

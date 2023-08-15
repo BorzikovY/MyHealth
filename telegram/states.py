@@ -14,7 +14,8 @@ from api import (
     get_programs,
     update_subscribe,
     get_trainings,
-    get_portions, get_approaches
+    get_portions,
+    get_approaches
 )
 from keyboards import (
     create_schedule_keyboard,
@@ -36,6 +37,7 @@ from messages import (
     info_approaches_message
 )
 from notifications import scheduler
+from settings import PAYMENT_TOKEN
 
 
 class ProgramState(StatesGroup):
@@ -76,6 +78,10 @@ class ScheduleState(StatesGroup):
 
 class InfoState(StatesGroup):
     info: State = State()
+
+
+class PaymentState(StatesGroup):
+    balance: State = State()
 
 
 class Iterable:
@@ -481,3 +487,26 @@ async def get_next_training(call: types.CallbackQuery, callback_data: Move, stat
     else:
         await send_programs(call, state, callback_data.direction)
         await state.set_state(ProgramState.next_program)
+
+
+async def get_balance(message: types.Message, state: FSMContext):
+    try:
+        value = int(message.text)
+        assert value >= 0
+        await Telegram.send_invoice(
+            message.chat.id,
+            title="Пополнение баланса",
+            description="Пополните баланс, после чего вы можете преобрести тренировочную программу.",
+            provider_token=PAYMENT_TOKEN,
+            currency='rub',
+            prices=[types.LabeledPrice(label=f'{value} руб 💰️', amount=value * 100)],
+            start_parameter='accrue-balance',
+            payload=f'accrue-balance-payload'
+        )
+        await state.clear()
+    except (ValueError, AssertionError) as error:
+        await message.answer("Введите число больше 0")
+        await Telegram.delete_message(
+            message.from_user.id, message.message_id - 1
+        )
+        await message.delete()

@@ -24,7 +24,7 @@ from keyboards import (
     create_activity_keyboard,
     ID,
     Schedule,
-    Content,
+    Content, COMMANDS,
 )
 from notifications import scheduler
 from states import (
@@ -36,12 +36,13 @@ from states import (
     CaloriesState,
     InfoState,
     Cycle,
-    Iterable
+    Iterable,
+    PaymentState
 )
 from models import (
     TelegramUser,
     Subscriber,
-    TrainingProgram
+    TrainingProgram, Token
 )
 
 
@@ -50,13 +51,19 @@ async def start(message: types.Message, state: FSMContext):
     client = ApiClient()
     instance: TelegramUser = create_anonymous_user(message.from_user)
 
-    user: TelegramUser = await register_user(client, instance)
-    if user:
+    token: Token = await client.get_token(instance)
+    if not isinstance(token, Token):
+        user: TelegramUser = await register_user(client, instance)
         msg: str = f"Привет {user.first_name} {user.last_name} 👋️\n\n" \
                    "Я <b>спорт-бот</b>, и я помогу тебе подобрать" \
                    "программу под твои интересы и физическую подготовку"
     else:
-        msg: str = "Нажмите на кнопку <b>Моё здоровье</b>, чтобы настроить оповещения " \
+        user: TelegramUser = await client.get_user(instance, token, cache=True)
+        if user.subscriber is not None:
+            start_keyboard.keyboard[0][0].text = COMMANDS["unsubscribe"]
+        else:
+            start_keyboard.keyboard[0][0].text = COMMANDS["subscribe"]
+        msg: str = "Нажмите на кнопку <b>Моё здоровье 🫀️</b>, чтобы настроить оповещения " \
                    "о начале тренировок или посмотреть информацию о здоровье\n\n" \
                    "Если у вас возникли вопросы, обратитесь в <b>тех поддержку</b>"
 
@@ -84,6 +91,15 @@ async def subscribe(message: types.Message, state: FSMContext, client: ApiClient
     await client.create_subscriber(*args)
     msg = "Вы подписаны! Нажмите в меню <b>Мое здоровье 🫀️</b>, " \
           "чтобы заполнить данные о ваших физических характеристиках"
+    await message.answer(msg, parse_mode="HTML")
+
+
+async def unsubscribe(message: types.Message, state: FSMContext, client: ApiClient, args):
+    await state.clear()
+    await client.delete_subscriber(*args)
+    msg = "Вы отписались! Все данные о вашем здоровье удалены(\n\n" \
+          "Если вы случайно нажали на кнопку <b>Отписаться 🚫</b>, " \
+          "обратитесь в тех. поддержку. Вам помогут востановить данные."
     await message.answer(msg, parse_mode="HTML")
 
 
@@ -167,6 +183,12 @@ async def buy_content(call: types.CallbackQuery, callback_data: Content, state: 
         await call.message.edit_text("Продукт не был преобретен. Проверьте баланс или обратитесь в тех поддержку.")
 
 
+async def accrue_balance(call: types.CallbackQuery, state: FSMContext, args):
+    await state.clear()
+    await call.message.edit_text("Введите сумму пополнения (в рублях)")
+    await state.set_state(PaymentState.balance)
+
+
 async def program(call: types.CallbackQuery, callback_data: ID, state: FSMContext):
     await state.clear()
     instance = await get_program(call.from_user, {"id": callback_data.id})
@@ -208,12 +230,12 @@ async def approaches(message: types.Message, state: FSMContext, subscriber: Subs
             training.id for training in
             await get_trainings({"program_id": program_id})
         ]))
-        if trainings.loop:
-            instances = iter(
-                Cycle(await get_approaches(
-                    message.from_user, {"training_id": next(trainings)}
-                ))
-            )
+        instances = iter(
+            Cycle(await get_approaches(
+                message.from_user, {"training_id": next(trainings)}
+            ))
+        )
+        if trainings.loop and instances.loop:
             approach = next(instances)
             await Telegram.send_message(
                 message.from_user.id, approach.message,

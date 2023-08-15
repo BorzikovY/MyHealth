@@ -381,7 +381,7 @@ class UserUpdateSerializer(UserSerializer):  # pylint: disable=too-many-ancestor
     User update serializer
     """
 
-    subscriber = SubscriberUpdateSerializer()
+    subscriber = SubscriberUpdateSerializer(required=False)
 
     @staticmethod
     def update_simple(obj: Model, fields: list[str], data: dict):
