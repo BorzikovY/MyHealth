@@ -148,7 +148,7 @@ async def set_notification(message: types.Message, state: FSMContext):
         trigger="cron",
         kwargs={"chat_id": message.from_user.id},
         day_of_week=",".join(map(str, data["weekdays"])),
-        hour=data["hour"] - int(offset),
+        hour=(data["hour"] - int(offset)) % 24,
         minute=data["minute"],
         id=str(message.from_user.id),
         replace_existing=True
@@ -165,7 +165,7 @@ async def get_weekdays(call: types.CallbackQuery, callback_data: Schedule, state
             texts.update({callback_data.text})
         message = "Выберите день недели.\n"
         if texts:
-            message += f"Вы уже выбрали {', '.join(map(lambda t: f'<b>{t}</b>', texts))}"
+            message += f"Вы уже выбрали: {', '.join(map(lambda t: f'<b>{t}</b>', texts))}"
         await call.message.edit_text(message, parse_mode="HTML")
         await call.message.edit_reply_markup(
             reply_markup=create_schedule_keyboard()
@@ -303,13 +303,13 @@ async def get_info(call: types.CallbackQuery, callback_data: Info, state: FSMCon
     match callback_data.section:
         case '/my_health':
             info = info_my_health_message
-        case '/account':
-            info = info_account_message
+        # case '/account':
+        #     info = info_account_message
         case '/approaches':
             info = info_approaches_message
         case _:
             info = None
-    await call.answer(info)
+    await Telegram.send_message(call.from_user.id, info, parse_mode='HTML')
 
 
 async def send_nutritions(call: types.CallbackQuery, state: FSMContext, direction: int = 1):

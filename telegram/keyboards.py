@@ -117,9 +117,9 @@ def create_my_health_keyboard(enable=True, **kwargs):
     )
     keyboard_builder.button(text="Заполнить данные", callback_data="update_subscribe")
     if enable:
-        keyboard_builder.button(text="Запустить уведомление", callback_data="set_schedule")
+        keyboard_builder.button(text="Запустить напоминания", callback_data="set_schedule")
     else:
-        keyboard_builder.button(text="Отключить уведомление", callback_data="disable_schedule")
+        keyboard_builder.button(text="Отключить напоминания", callback_data="disable_schedule")
 
     keyboard_builder.button(text="Калькулятор калорий и БЖУ", callback_data="calculate_calories")
 
@@ -177,7 +177,7 @@ def create_info_keyboard():
     keyboard_builder = InlineKeyboardBuilder()
 
     keyboard_builder.button(text="Мое здоровье 🫀️", callback_data=Info(section='/my_health'))
-    keyboard_builder.button(text="Мои данные 📃️", callback_data=Info(section='/account'))
+    # keyboard_builder.button(text="Мои данные 📃️", callback_data=Info(section='/account'))
     keyboard_builder.button(text="Текущая тренировка ⏳", callback_data=Info(section='/approaches'))
 
     keyboard_builder.adjust(1, 1, 1)
@@ -199,10 +199,8 @@ start_keyboard = ReplyKeyboardMarkup(one_time_keyboard=False, keyboard=[
     [
         KeyboardButton(text=COMMANDS["subscribe"]),
         KeyboardButton(text=COMMANDS["my_health"]),
-        KeyboardButton(text=COMMANDS["account"])
-    ],
-    [
         KeyboardButton(text=COMMANDS["info"])
+        # KeyboardButton(text=COMMANDS["account"])
     ],
     [
         KeyboardButton(text=COMMANDS["programs"]),
