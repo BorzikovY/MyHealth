@@ -272,20 +272,24 @@ class Subscriber:
     @property
     def water_norm(self) -> float:
         '''Возвращает суточную норму воды'''
-        return (self.weight*30)/1000
+        if self.weight:
+            return (self.weight*30)/1000
+        return "?"
     
     @property
     def bmi(self) -> str:
         '''Возвращает индекс массы тела и его расшифровку'''
-        bmi = round(self.weight/(0.0001*self.height**2), 1)
-        if bmi < 18.5:
-            return f'{bmi} - дефицит массы тела'
-        elif 18.5 <= bmi <= 24.9:
-            return f'{bmi} - нормальный вес'
-        elif 25 <= bmi <= 30:
-            return f'{bmi} - избыточный вес'
-        elif bmi > 30:
-            return f'{bmi} - ожирение'
+        if self.weight and self.height:
+            bmi = round(self.weight/(0.0001*self.height**2), 1)
+            if bmi < 18.5:
+                return f'{bmi} - дефицит массы тела'
+            elif 18.5 <= bmi <= 24.9:
+                return f'{bmi} - нормальный вес'
+            elif 25 <= bmi <= 30:
+                return f'{bmi} - избыточный вес'
+            elif bmi > 30:
+                return f'{bmi} - ожирение'
+        return "?"
 
     def __post_init__(self):
         self.message = subscriber_message.format(
