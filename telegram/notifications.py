@@ -8,9 +8,9 @@ from settings import DB_URL
 
 
 scheduler = AsyncIOScheduler(
-    # jobstores={
-    #     'default': SQLAlchemyJobStore(url=DB_URL),
-    # },
+    jobstores={
+        'default': SQLAlchemyJobStore(url=DB_URL),
+    },
     timezone=utc,
     executors={
         "cron": ThreadPoolExecutor()
