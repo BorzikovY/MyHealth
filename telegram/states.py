@@ -154,7 +154,7 @@ async def set_notification(message: types.Message, state: FSMContext):
         trigger="cron",
         kwargs={"chat_id": message.from_user.id},
         day_of_week=",".join(map(str, data["weekdays"])),
-        hour=data["hour"] - int(offset),
+        hour=(data["hour"] - int(offset)) % 24,
         minute=data["minute"],
         id=str(message.from_user.id),
         replace_existing=True
