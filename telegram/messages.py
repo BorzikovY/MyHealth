@@ -8,8 +8,8 @@ program_message = "<b>{name} | {group_name}</b>\n\n" \
 
 approach_message = "<b>№_{query_place}</b> {exercise}\n" \
                    "<pre>Время одного подхода: {time}</pre>\n" \
-                   "<pre>Кол-во подходов:      {amount} раз</pre>\n" \
-                   "<pre>Кол-во повторений:    {repetition_count} раз</pre>\n" \
+                   "<pre>Кол-во подходов:      {amount} {amount_prefix}</pre>\n" \
+                   "<pre>Кол-во повторений:    {repetition_count} {repetition_count_prefix}</pre>\n" \
                    "<pre>Время отдыха:         {rest}</pre>"
 
 exercise_message = "<b>{name}</b>\n" \

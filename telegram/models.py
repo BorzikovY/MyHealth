@@ -134,8 +134,16 @@ class Approach:
     def convert_time(time: str | None):
         if time is not None:
             _, minutes, seconds = [int(t) for t in time.split(":")]
-            return f"{int(seconds // 60)}м {int(seconds % 60)}с"
+            return f"{minutes}м {seconds}с"
         return "-"
+
+    @staticmethod
+    def number_prefix(number: int) -> str:
+        if number:
+            end = int(str(number)[-1])
+            if end in range(2, 5) and number not in range(12, 15):
+                return "раза"
+        return "раз"
 
     def __post_init__(self):
         self.exercise = Exercise(**self.exercise)
@@ -143,7 +151,9 @@ class Approach:
             time=self.convert_time(self.time),
             query_place=self.query_place,
             repetition_count=self.repetition_count,
+            repetition_count_prefix=self.number_prefix(self.repetition_count),
             amount=self.amount,
+            amount_prefix=self.number_prefix(self.amount),
             rest=self.convert_time(self.rest),
             exercise=self.exercise.message
         )
