@@ -177,11 +177,18 @@ class TrainingProgramGroup:
 @dataclass
 class Training:
 
+    @staticmethod
+    def convert_time(time: str | None):
+        if time is not None:
+            minutes = timedelta(seconds=float(time)).total_seconds() // 60
+            return f"{int(minutes // 60)}ч {int(minutes % 60)}м"
+        return "-"
+
     def __post_init__(self):
         self.message = training_message.format(
             name=self.name,
             difficulty=self.difficulty,
-            time=self.time,
+            time=self.convert_time(self.time),
             approach_count=self.approach_count,
             description=self.description
         )
