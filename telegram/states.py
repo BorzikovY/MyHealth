@@ -125,7 +125,11 @@ async def get_next_approach(call: types.CallbackQuery, callback_data: Move, stat
             )
             await state.update_data({"trainings": trainings, "approaches": instances})
         except StopIteration as error:
-            await call.message.edit_text("Программа закончилась. Введите /approaches, чтобы еще раз все посмотреть.")
+            await call.message.edit_text(
+                "Программа закончилась. Нажмите на кнопку <b>Текущая тренировка ⏳</b>,\n"
+                "чтобы еще раз все просмотреть.",
+                parse_mode="HTML"
+            )
             return
     await send_approach(call, state, callback_data.direction)
 

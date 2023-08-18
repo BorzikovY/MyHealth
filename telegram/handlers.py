@@ -54,11 +54,11 @@ async def start(message: types.Message, state: FSMContext):
     if user:
         msg: str = f"Привет {user.first_name} {user.last_name} 👋️\n\n" \
                    "Я <b>спорт-бот</b>, и я помогу тебе подобрать" \
-                   "программу под твои интересы и физическую подготовку"
+                   "программу под твои интересы и физическую подготовку."
     else:
-        msg: str = "Нажмите на кнопку <b>Моё здоровье</b>, чтобы настроить напоминания " \
-                   "о начале тренировок или посмотреть информацию о здоровье\n\n" \
-                   "Если у вас возникли вопросы, обратитесь в <b>тех поддержку</b>"
+        msg: str = "Нажмите на кнопку <b>Мое здоровье 🫀️</b>, чтобы настроить напоминания " \
+                   "о начале тренировок или посмотреть информацию о здоровье.\n\n" \
+                   "Если у вас возникли вопросы, обратитесь в <b>тех. поддержку</b>."
 
     await message.reply(msg, reply_markup=start_keyboard, parse_mode="HTML")
 
@@ -83,7 +83,7 @@ async def subscribe(message: types.Message, state: FSMContext, client: ApiClient
     await state.clear()
     await client.create_subscriber(*args)
     msg = "Вы подписаны! Нажмите в меню <b>Мое здоровье 🫀️</b>, " \
-          "чтобы заполнить данные о ваших физических характеристиках"
+          "чтобы заполнить данные о ваших физических характеристиках."
     await message.answer(msg, parse_mode="HTML")
 
 
@@ -131,7 +131,8 @@ async def my_health(message: types.Message, state: FSMContext, subscriber: Subsc
 
 
 async def update_my_health(call: types.CallbackQuery, state: FSMContext):
-    await call.message.edit_text(
+    await Telegram.send_message(
+        call.from_user.id,
         "Введите возраст 👶️-🧓️",
     )
     await state.set_state(SubscribeState.age)
@@ -162,9 +163,9 @@ async def buy_content(call: types.CallbackQuery, callback_data: Content, state: 
         "sport_nutrition": callback_data.sport_nutrition
     }
     if await update_subscribe(call.from_user, data):
-        await call.message.edit_text("Вы успешно преобрели продукт!")
+        await call.message.edit_text("Вы успешно приобрели продукт!")
     else:
-        await call.message.edit_text("Продукт не был преобретен. Проверьте баланс или обратитесь в тех поддержку.")
+        await call.message.edit_text("Продукт не был приобретен. Проверьте баланс или обратитесь в тех. поддержку.")
 
 
 async def program(call: types.CallbackQuery, callback_data: ID, state: FSMContext):
@@ -173,9 +174,9 @@ async def program(call: types.CallbackQuery, callback_data: ID, state: FSMContex
     if isinstance(instance, TrainingProgram):
         await call.message.answer(instance.message, parse_mode="HTML")
     else:
-        msg = "Вы еще не преобрели тренировочную программу\n\n" \
-              "Нажмите на кнопку в меню, чтобы вывести список программ"
-        await call.message.answer(msg)
+        msg = "Вы еще не приобрели тренировочную программу.\n\n" \
+              "Нажмите на кнопку <b>Программы тренировок 🎽</b>, чтобы вывести список программ."
+        await call.message.answer(msg, parse_mode="HTML")
 
 
 async def schedule(call: types.CallbackQuery, state: FSMContext):
@@ -227,5 +228,5 @@ async def approaches(message: types.Message, state: FSMContext, subscriber: Subs
             )
     else:
         await message.reply(
-            "Программа не найдена. Подпишитесь на одну из доступных программ"
+            "Программа не найдена. Подпишитесь на одну из доступных программ."
         )
