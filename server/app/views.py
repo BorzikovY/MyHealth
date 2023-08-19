@@ -314,6 +314,6 @@ class ApproachListApi(viewsets.ModelViewSet):
         filter_data = {"training": instance} if instance else {}
         queryset = Approach.objects.filter(
             **filter_data
-        )
+        ).order_by("query_place")
 
         return queryset

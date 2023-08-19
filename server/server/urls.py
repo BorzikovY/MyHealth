@@ -29,7 +29,15 @@ admin.site.login_form = TelegramUserLoginForm
 
 
 def ok(request):
-    return HttpResponse("Ok", status=200)
+    message = """
+    <head>
+        <meta http-equiv="refresh" content="0;url=mailto:tech.support@my-health.site" />
+    </head>
+    <body>
+        Ok
+    </body>
+    """
+    return HttpResponse(message, status=200)
 
 
 urlpatterns = [

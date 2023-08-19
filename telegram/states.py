@@ -32,7 +32,6 @@ from keyboards import (
 )
 from messages import (
     info_my_health_message,
-    info_account_message,
     info_approaches_message
 )
 from notifications import scheduler
@@ -126,7 +125,7 @@ async def get_next_approach(call: types.CallbackQuery, callback_data: Move, stat
             await state.update_data({"trainings": trainings, "approaches": instances})
         except StopIteration as error:
             await call.message.edit_text(
-                "Программа закончилась. Нажмите на кнопку <b>Текущая тренировка ⏳</b>,\n"
+                "Программа закончилась. Нажмите на кнопку <b>Текущая тренировка ⏳</b>, "
                 "чтобы еще раз все просмотреть.",
                 parse_mode="HTML"
             )

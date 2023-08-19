@@ -58,7 +58,8 @@ async def start(message: types.Message, state: FSMContext):
     else:
         msg: str = "Нажмите на кнопку <b>Мое здоровье 🫀️</b>, чтобы настроить напоминания " \
                    "о начале тренировок или посмотреть информацию о здоровье.\n\n" \
-                   "Если у вас возникли вопросы, обратитесь в <b>тех. поддержку</b>."
+                   "Если у вас возникли вопросы, обратитесь в " \
+                   "<a href='https://my-health.site'>тех. поддержку</a>."
 
     await message.reply(msg, reply_markup=start_keyboard, parse_mode="HTML")
 
@@ -209,12 +210,12 @@ async def approaches(message: types.Message, state: FSMContext, subscriber: Subs
             training.id for training in
             await get_trainings({"program_id": program_id})
         ]))
-        if trainings.loop:
-            instances = iter(
-                Cycle(await get_approaches(
-                    message.from_user, {"training_id": next(trainings)}
-                ))
-            )
+        instances = iter(
+            Cycle(await get_approaches(
+                message.from_user, {"training_id": next(trainings)}
+            ))
+        )
+        if trainings.loop and instances.loop:
             approach = next(instances)
             await Telegram.send_message(
                 message.from_user.id, approach.message,

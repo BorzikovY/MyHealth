@@ -52,7 +52,7 @@ class TelegramUserChangeForm(
             self.cleaned_data.get(key) for key in ["telegram_id", "chat_id"]
         ]
 
-        if not TelegramUser.objects.filter(telegram_id=telegram_id).exists():
+        if not TelegramUser.objects.filter(id=telegram_user.id).exists():
             telegram_user.set_chat_id(chat_id)
         telegram_user.save()
 
