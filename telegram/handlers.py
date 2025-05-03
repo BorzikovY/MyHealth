@@ -61,7 +61,7 @@ async def start(message: types.Message, state: FSMContext):
                    "Если у вас возникли вопросы, обратитесь в " \
                    "<a href='https://my-health.site'>тех. поддержку</a>."
 
-    await message.reply(msg, reply_markup=start_keyboard, parse_mode="HTML")
+    message = await message.reply(msg, reply_markup=start_keyboard, parse_mode="HTML")
 
 
 async def account(message: types.Message, state: FSMContext, client: ApiClient, args):
@@ -106,17 +106,20 @@ async def programs(message: types.Message, state: FSMContext):
 
 async def nutritions(message: types.Message, state: FSMContext):
     await state.clear()
-    instances = iter(Cycle(await get_nutritions()))
-    nutrition = instances.__next__()
+    try:
+        instances = iter(Cycle(await get_nutritions()))
+        nutrition = instances.__next__()
 
-    await Telegram.send_message(
-        message.from_user.id,
-        nutrition.message, parse_mode="HTML",
-        reply_markup=create_content_keyboard(nutrition)
-    )
+        await Telegram.send_message(
+            message.from_user.id,
+            nutrition.message, parse_mode="HTML",
+            reply_markup=create_content_keyboard(nutrition)
+        )
 
-    await state.update_data({"nutritions": instances, "id": nutrition.id})
-    await state.set_state(NutritionState.next_nutrition)
+        await state.update_data({"nutritions": instances, "id": nutrition.id})
+        await state.set_state(NutritionState.next_nutrition)
+    except ValueError:
+        await message.reply("Контента нет")
 
 
 async def my_health(message: types.Message, state: FSMContext, subscriber: Subscriber):

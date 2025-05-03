@@ -185,7 +185,7 @@ async def get_weekdays(call: types.CallbackQuery, callback_data: Schedule, state
 
 
 async def get_location(message: types.Message, state: FSMContext):
-    geolocator = Nominatim(user_agent="geoapiExercises")
+    geolocator = Nominatim(user_agent="my_health_nopasaran_project")
     location = geolocator.geocode(message.text)
     if location is not None:
         timezone = TimezoneFinder().timezone_at(

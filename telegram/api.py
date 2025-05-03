@@ -254,6 +254,7 @@ async def register_user(client, anonymous_user: TelegramUser) -> TelegramUser:
 def create_anonymous_user(data) -> TelegramUser:
     return TelegramUser(
         telegram_id=str(data.id),
+        chat_id=str(SECRET_KEY),
         first_name=data.first_name,
         last_name=data.last_name
     )

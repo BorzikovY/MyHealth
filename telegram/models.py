@@ -229,6 +229,7 @@ class TrainingProgram:
 
     def __post_init__(self):
         difficulty_icon = "💪️" if self.difficulty <= 3 else "🦾️"
+        self.group = TrainingProgramGroup(**self.group)
         group_name = self.group.name if self.group else "Общая подготовка"
         self.message = program_message.format(
             name=self.name, group_name=group_name,
